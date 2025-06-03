@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+	<AppDesignerFolder>CSharpProperties</AppDesignerFolder>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\Gazillion\Gazillion.csproj" />
+    <ProjectReference Include="..\MHServerEmu.Core\MHServerEmu.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Google.ProtocolBuffers">
+      <HintPath>..\..\dep\protobuf-csharp\Google.ProtocolBuffers.dll</HintPath>
+    </Reference>
+    <Reference Include="RobustPredicates">
+      <HintPath>..\..\dep\RobustPredicates\RobustPredicates.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
