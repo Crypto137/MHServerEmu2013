@@ -12,7 +12,7 @@ These instructions assume you already have an MHServerEmu setup of some kind. If
 
 2. Acquire a copy of the 1.10 client. You can download older versions of the game client, including 1.10, **if you have Marvel Heroes in your Steam library**.
    
-   1. Open the Steam console by entering `steam://open/console` in your web browser's address bar or by clicking [this link](steam://open/console).
+   1. Open the Steam console by entering `steam://open/console` in your web browser's address bar.
    
    2. Enter the following command in the Steam console: `download_depot 226320 226321 2968810361455133183`. You should see the following message in the console: `Downloading depot 226321 (36326 files, 10375 MB) ...`. There will be no download progress indicator, but when the download finishes, a `Depot download complete` message will be printed to the Steam console.
    
@@ -35,5 +35,3 @@ These instructions assume you already have an MHServerEmu setup of some kind. If
 7. Run `MarvelGame.exe` located in `Marvel Heroes\UnrealEngine3\Binaries\Win32` with the following arguments: `-nobitraider -nosteam`.
 
 8. Log in with any email and password.
-
-# 
