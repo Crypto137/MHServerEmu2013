@@ -4,6 +4,10 @@ MHServerEmu2013 is a server emulator for the classic version of Marvel Heroes. I
 
 The primary supported version of the game client is **1.10.0.643** released on July 18, 2013. The server can also be built for game version **1.10.0.69** released on May 31, 2013 by specifying the `BUILD_1_10_0_69` conditional compilation symbol.
 
+## Download
+
+[![Nightly Release (Windows)](https://github.com/Crypto137/MHServerEmu2013/actions/workflows/nightly-release-windows.yml/badge.svg)](https://nightly.link/Crypto137/MHServerEmu2013/workflows/nightly-release-windows/master?preview) [![Nightly Release (Linux)](https://github.com/Crypto137/MHServerEmu2013/actions/workflows/nightly-release-linux.yml/badge.svg)](https://nightly.link/Crypto137/MHServerEmu2013/workflows/nightly-release-linux/master?preview)
+
 ## FAQ
 
 **How is this different from MHServerEmu?**
@@ -32,7 +36,7 @@ MHServerEmu2013 is more of an experiment born out of my personal nostalgia and c
 
 These instructions assume you already have an MHServerEmu setup of some kind. If not, see [Initial Setup](https://github.com/Crypto137/MHServerEmu/blob/master/docs/Setup/InitialSetup.md).
 
-1. Download the latest nightly build of MHServerEmu2013 or build the source code yourself.
+1. Download the [latest nightly build of MHServerEmu2013](https://nightly.link/Crypto137/MHServerEmu2013/workflows/nightly-release-windows/master?preview) or build the source code yourself.
 
 2. Acquire a copy of the 1.10 client. You can download older versions of the game client, including 1.10, **if you have Marvel Heroes in your Steam library**.
    
