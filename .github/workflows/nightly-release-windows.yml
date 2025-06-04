@@ -1,0 +1,33 @@
+name: Nightly Release (Windows)
+
+on:
+  schedule:
+    - cron: '15 7 * * *'
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x
+    - name: Restore dependencies
+      run: dotnet restore MHServerEmu2013.sln
+    - name: Build
+      run: dotnet build MHServerEmu2013.sln --no-restore --configuration Release
+    - name: Run tests
+      run: dotnet test MHServerEmu2013.sln --no-restore --no-build --configuration Release
+    - name: Get current date
+      run: echo "DATE=$(date +'%Y%m%d')" >> $env:GITHUB_ENV
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: MHServerEmu2013-nightly-${{ env.DATE }}-Release-windows
+        path: |
+          ./src/MHServerEmu2013/bin/Release/net8.0
+          !./src/MHServerEmu2013/bin/Release/net8.0/*.pdb
+          !./src/MHServerEmu2013/bin/Release/net8.0/*.xml

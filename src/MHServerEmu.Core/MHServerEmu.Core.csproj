@@ -6,6 +6,12 @@
     <Nullable>disable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <AssemblyVersion>0.0.1.0</AssemblyVersion>
+    <FileVersion>$(AssemblyVersion)</FileVersion>
+    <InformationalVersion>$(AssemblyVersion)</InformationalVersion>
+  </PropertyGroup>
+	
   <ItemGroup>
     <ProjectReference Include="..\Gazillion\Gazillion.csproj" />
   </ItemGroup>

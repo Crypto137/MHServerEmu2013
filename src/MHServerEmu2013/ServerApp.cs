@@ -24,7 +24,7 @@ namespace MHServerEmu
 
         private bool _isRunning = false;
 
-        public static readonly string VersionInfo = $"Client Version {Game.Version} | {AssemblyHelper.ParseAssemblyBuildTime():yyyy.MM.dd HH:mm:ss} UTC | {BuildConfiguration}";
+        public static readonly string VersionInfo = $"Version {AssemblyHelper.GetAssemblyInformationalVersion()} | {AssemblyHelper.ParseAssemblyBuildTime():yyyy.MM.dd HH:mm:ss} UTC | {BuildConfiguration} | Game Version {Game.Version}";
 
         public static ServerApp Instance { get; } = new();
 

@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
     <ApplicationIcon>icon.ico</ApplicationIcon>
-    <InformationalVersion>1.0.0</InformationalVersion>
+    <InformationalVersion>0.0.1</InformationalVersion>
     <SourceRevisionId>build$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</SourceRevisionId>
     <AssemblyVersion>$(InformationalVersion).0</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
