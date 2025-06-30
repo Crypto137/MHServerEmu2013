@@ -6,10 +6,19 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\Marvel_Logo.ico</ApplicationIcon>
     <Platforms>AnyCPU</Platforms>
+    <Configurations>Debug;Release;Debug (1.10.0.69);Release (1.10.0.69)</Configurations>
   </PropertyGroup>
 
   <PropertyGroup>
     <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug (1.10.0.69)|AnyCPU'">
+    <DefineConstants>$(DefineConstants);BUILD_1_10_0_69;DEBUG</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (1.10.0.69)|AnyCPU'">
+    <DefineConstants>$(DefineConstants);BUILD_1_10_0_69;RELEASE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
