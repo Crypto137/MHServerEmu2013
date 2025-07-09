@@ -7,6 +7,7 @@ using MHServerEmu.Core.Network;
 using MHServerEmu.Frontend;
 using MHServerEmu.Games;
 using MHServerEmu.Games.GameData;
+using MHServerEmu.Games.Network.InstanceManagement;
 using MHServerEmu.Grouping;
 using MHServerEmu.PlayerManagement;
 
@@ -70,10 +71,10 @@ namespace MHServerEmu
             ServerManager serverManager = ServerManager.Instance;
             serverManager.Initialize();
 
-            serverManager.RegisterGameService(new FrontendServer(), ServerType.FrontendServer);
-            serverManager.RegisterGameService(new PlayerManagerService(), ServerType.PlayerManager);
-            serverManager.RegisterGameService(new GroupingManagerService(), ServerType.GroupingManager);
-            serverManager.RegisterGameService(new GameInstanceService(), ServerType.GameInstanceServer);
+            serverManager.RegisterGameService(new GameInstanceService(), GameServiceType.GameInstance);
+            serverManager.RegisterGameService(new PlayerManagerService(), GameServiceType.PlayerManager);
+            serverManager.RegisterGameService(new GroupingManagerService(), GameServiceType.GroupingManager);
+            serverManager.RegisterGameService(new FrontendServer(), GameServiceType.Frontend);
 
             serverManager.RunServices();
 

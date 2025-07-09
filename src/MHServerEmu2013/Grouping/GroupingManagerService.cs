@@ -6,6 +6,8 @@ namespace MHServerEmu.Grouping
     {
         // Just a dummy for now
 
+        public GameServiceState State { get; private set; } = GameServiceState.Created;
+
         public GroupingManagerService()
         {
 
@@ -13,12 +15,12 @@ namespace MHServerEmu.Grouping
 
         public void Run()
         {
-            
+            State = GameServiceState.Running;
         }
 
         public void Shutdown()
         {
-            
+            State = GameServiceState.Shutdown;
         }
 
         public void ReceiveServiceMessage<T>(in T message) where T : struct, IGameServiceMessage

@@ -1,4 +1,4 @@
-﻿using MHServerEmu.Frontend;
+﻿using MHServerEmu.Core.Network;
 
 namespace MHServerEmu.PlayerManagement
 {

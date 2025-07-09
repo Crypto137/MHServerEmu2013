@@ -1,10 +1,12 @@
 ﻿using MHServerEmu.Core.Network;
 
-namespace MHServerEmu.Games
+namespace MHServerEmu.Games.Network.InstanceManagement
 {
     public class GameInstanceService : IGameService
     {
         private Game _game;
+
+        public GameServiceState State { get; private set; } = GameServiceState.Created;
 
         public GameInstanceService()
         {
@@ -16,11 +18,13 @@ namespace MHServerEmu.Games
             // TODO: GameManager
             _game = new(1);
             _game.Run();
+
+            State = GameServiceState.Running;
         }
 
         public void Shutdown()
         {
-            
+            State = GameServiceState.Shutdown;
         }
 
         public string GetStatus()

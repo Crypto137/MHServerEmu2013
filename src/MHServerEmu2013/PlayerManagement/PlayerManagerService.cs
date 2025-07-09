@@ -12,18 +12,20 @@ namespace MHServerEmu.PlayerManagement
 
         private static readonly Logger Logger = LogManager.CreateLogger();
 
+        public GameServiceState State { get; private set; } = GameServiceState.Created;
+
         public PlayerManagerService()
         {
         }
 
         public void Run()
         {
-
+            State = GameServiceState.Running;
         }
 
         public void Shutdown()
         {
-
+            State = GameServiceState.Shutdown;
         }
 
         public void ReceiveServiceMessage<T>(in T message) where T : struct, IGameServiceMessage
@@ -34,12 +36,12 @@ namespace MHServerEmu.PlayerManagement
                     // HACK: Add to a game with a delay to give the client time to connect to the grouping service
                     Task.Run(async () => {
                         await Task.Delay(50);
-                        ServerManager.Instance.SendMessageToService(ServerType.GameInstanceServer, addClient);
+                        ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, addClient);
                     });
                     break;
 
                 case GameServiceProtocol.RemoveClient removeClient:
-                    ServerManager.Instance.SendMessageToService(ServerType.GameInstanceServer, removeClient);
+                    ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, removeClient);
                     break;
 
                 case GameServiceProtocol.RouteMessageBuffer routeMessageBuffer:
@@ -50,7 +52,7 @@ namespace MHServerEmu.PlayerManagement
                             break;
 
                         default:
-                            ServerManager.Instance.SendMessageToService(ServerType.GameInstanceServer, routeMessageBuffer);
+                            ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, routeMessageBuffer);
                             break;
                     }
 

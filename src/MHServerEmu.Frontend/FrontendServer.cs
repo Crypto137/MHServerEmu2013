@@ -14,6 +14,8 @@ namespace MHServerEmu.Frontend
 
         private AuthServer _authServer = new();
 
+        public GameServiceState State { get; private set; } = GameServiceState.Created;
+
         #region IGameService Implementation
 
         public override void Run()
@@ -32,7 +34,11 @@ namespace MHServerEmu.Frontend
             Task.Run(_authServer.Run);
         }
 
-        // Shutdown implemented by TcpServer
+        public override void Shutdown()
+        {
+            base.Shutdown();
+            State = GameServiceState.Shutdown;
+        }
 
         public void ReceiveServiceMessage<T>(in T message) where T : struct, IGameServiceMessage
         {
