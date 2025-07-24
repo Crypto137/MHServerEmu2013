@@ -215,10 +215,7 @@ namespace MHServerEmu.Games.Commands
             if (@params.Length == 0)
                 return "Invalid parameters.";
 
-            if (invoker.MigrationData.ChangePlayerName(@params[0]) == false)
-                return $"Failed to change name to '{@params[0]}'.";
-
-            invoker.MoveToTarget(GameDatabase.GlobalsPrototype.DefaultStartTarget);
+            // TODO: Fix this by doing it properly and setting the replicated field
             return string.Empty;
         }
 

@@ -24,13 +24,14 @@ namespace MHServerEmu.Games.Network
 
         private static readonly Logger Logger = LogManager.CreateLogger();
 
+        private static ulong CurrentPlayerDbGuid = 0x2000000000000001;
+
         private readonly IFrontendClient _frontendClient;
 
         public Game Game { get; }
 
         public AreaOfInterest AOI { get; }
         public TransferParams TransferParams { get; }
-        public MigrationData MigrationData { get; }
 
         public Player Player { get; private set; }
 
@@ -41,8 +42,6 @@ namespace MHServerEmu.Games.Network
 
             AOI = new(this);
             TransferParams = new(this);
-            MigrationData = new();
-            MigrationData.Initialize();
 
             // Set start target
             TransferParams.SetTarget(GameDatabase.GlobalsPrototype.DefaultStartTarget);
@@ -80,54 +79,22 @@ namespace MHServerEmu.Games.Network
             {
                 using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
                 settings.EntityRef = GameDatabase.GlobalsPrototype.DefaultPlayer;
-                settings.DbGuid = MigrationData.PlayerDbGuid;
+                settings.DbGuid = CurrentPlayerDbGuid++;
                 settings.OptionFlags = EntitySettingsOptionFlags.PopulateInventories;
                 settings.PlayerConnection = this;
-                settings.PlayerName = MigrationData.PlayerName;
+                settings.PlayerName = $"0x{settings.DbGuid:X}";
                 Player = Game.EntityManager.CreateEntity(settings) as Player;
             }
 
             // AvatarLibrary
             foreach (PrototypeId avatarProtoRef in DataDirectory.Instance.IteratePrototypesInHierarchy<AvatarPrototype>(PrototypeIterateFlags.NoAbstractApprovedOnly))
                 Player.CreateAvatar(avatarProtoRef);
-
-            if (MigrationData.AvatarProtoRef != PrototypeId.Invalid)
-            {
-                Avatar avatar = Player.GetAvatar(MigrationData.AvatarProtoRef);
-                Inventory avatarInPlay = Player.GetInventory(InventoryConvenienceLabel.AvatarInPlay);
-                avatar.ChangeInventoryLocation(avatarInPlay);
-            }
-
-            // Restore items
-            RestoreItems(Player);
-
-            foreach (Avatar avatar in new AvatarIterator(Player))
-                RestoreItems(avatar);
-        }
-
-        private void RestoreItems(Entity entity)
-        {
-            EntityManager entityManager = Game.EntityManager;
-
-            if (MigrationData.TryGetArchivedItems(entity.PrototypeDataRef, out IReadOnlyList<MigrationData.ArchivedEntity> archivedItems) == false)
-                return;
-
-            for (int i = 0; i < archivedItems.Count; i++)
-            {
-                MigrationData.ArchivedEntity archivedItem = archivedItems[i];
-
-                using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
-                settings.EntityRef = archivedItem.EntityProtoRef;
-                settings.InventoryLocation = new(entity.Id, archivedItem.InventoryProtoRef, archivedItem.Slot);
-                settings.ArchiveSerializeType = ArchiveSerializeType.Database;
-                settings.ArchiveData = archivedItem.ArchiveData;
-                entityManager.CreateEntity(settings);
-            }
         }
 
         public void EnterGame()
         {
-            Player.EnterGame();
+            if (Player.IsInGame == false)
+                Player.EnterGame();
 
             if (Player.CurrentAvatar == null)
             {
@@ -147,19 +114,6 @@ namespace MHServerEmu.Games.Network
             AOI.SetRegion(region.Id, false, position, orientation);
         }
 
-        public void ExitGame()
-        {
-            Player.ExitGame();
-
-            // save (this session only)
-            MigrationData.Update(this);
-
-            Player.Destroy();
-            Game.EntityManager.ProcessDeferredLists();
-
-            InitializePlayer();
-        }
-
         public bool MoveToTarget(PrototypeId targetProtoRef)
         {
             RegionConnectionTargetPrototype targetProto = targetProtoRef.As<RegionConnectionTargetPrototype>();
@@ -170,7 +124,7 @@ namespace MHServerEmu.Games.Network
 
             TransferParams.SetTarget(targetProtoRef);
 
-            ExitGame();
+            Player.CurrentAvatar.ExitWorld();
             Game.NetworkManager.SetPlayerConnectionPending(this);
 
             return true;
@@ -612,7 +566,6 @@ namespace MHServerEmu.Games.Network
             var createNewPlayer = message.As<NetMessageCreateNewPlayerWithSelectedStartingAvatar>();
             if (createNewPlayer == null) return Logger.WarnReturn(false, "OnCreateNewPlayerWithSelectedStartingAvatar(): Failed to retrieve message");
 
-            ExitGame();
             Game.NetworkManager.SetPlayerConnectionPending(this);
 
             Avatar avatar = Player.GetAvatar((PrototypeId)createNewPlayer.StartingAvatarPrototypeId);

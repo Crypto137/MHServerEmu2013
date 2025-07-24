@@ -289,12 +289,6 @@ namespace MHServerEmu.Games.Entities
             settings.EntityRef = avatarProtoRef;
             settings.InventoryLocation = new(Id, avatarLibrary.PrototypeDataRef);
 
-            if (PlayerConnection.MigrationData.TryGetArchivedAvatar(avatarProtoRef, out byte[] archiveData))
-            {
-                settings.ArchiveSerializeType = ArchiveSerializeType.Database;
-                settings.ArchiveData = archiveData;
-            }
-
             return Game.EntityManager.CreateEntity(settings) != null;
         }
 
