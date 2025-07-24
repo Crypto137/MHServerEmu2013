@@ -315,8 +315,6 @@ namespace MHServerEmu.Games.Entities
             bool exitStatus = !TestStatus(EntityStatus.ExitingWorld);
             SetStatus(EntityStatus.ExitingWorld, true);
 
-            RegionLocation.Region = null;
-
             OnExitedWorld();
             var oldLocation = ClearWorldLocation();
 
