@@ -12,6 +12,14 @@
     <FileVersion>$(AssemblyVersion)</FileVersion>
     <Configurations>Debug;Release;Debug 1.10.0.69;Release 1.10.0.69</Configurations>
   </PropertyGroup>
+	
+  <PropertyGroup>
+    <TieredCompilationQuickJit>false</TieredCompilationQuickJit>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <DefineConstants>OS_WINDOWS</DefineConstants>
+  </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
 

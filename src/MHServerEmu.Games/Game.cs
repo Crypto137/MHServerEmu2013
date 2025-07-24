@@ -251,7 +251,7 @@ namespace MHServerEmu.Games
             // Track catch-up frames
             if (timesUpdated > 1)
             {
-                Logger.Trace($"UpdateFixedTime(): Simulated {timesUpdated} frames in a single fixed update to catch up");
+                //Logger.Trace($"UpdateFixedTime(): Simulated {timesUpdated} frames in a single fixed update to catch up");
             }
 
             // Skip time if we have fallen behind
