@@ -1,4 +1,5 @@
-﻿using MHServerEmu.Core.Network;
+﻿using MHServerEmu.Core.Config;
+using MHServerEmu.Core.Network;
 
 namespace MHServerEmu.Games.Network.InstanceManagement
 {
@@ -6,18 +7,26 @@ namespace MHServerEmu.Games.Network.InstanceManagement
     {
         private Game _game;
 
+        internal GameThreadManager GameThreadManager { get; }
+
+        public GameInstanceConfig Config { get; }
+
         public GameServiceState State { get; private set; } = GameServiceState.Created;
 
         public GameInstanceService()
         {
+            GameThreadManager = new(this);
 
+            Config = ConfigManager.Instance.GetConfig<GameInstanceConfig>();
         }
 
         public void Run()
         {
-            // TODO: GameManager
+            GameThreadManager.Initialize();
+
+            // TODO: Backport GameManager
             _game = new(1);
-            _game.Run();
+            GameThreadManager.EnqueueGameToUpdate(_game);
 
             State = GameServiceState.Running;
         }
