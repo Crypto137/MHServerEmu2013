@@ -26,6 +26,15 @@ namespace MHServerEmu.Core.Network
         Shutdown,
     }
 
+    public enum ServerManagerState
+    {
+        Created,
+        Starting,
+        Running,
+        ShuttingDown,
+        Shutdown,
+    }
+
     /// <summary>
     /// Manages <see cref="IGameService"/> instances and routes <see cref="IGameServiceMessage"/> instances between them.
     /// </summary>
@@ -35,6 +44,8 @@ namespace MHServerEmu.Core.Network
 
         private readonly IGameService[] _services = new IGameService[(int)GameServiceType.NumServiceTypes];
         private readonly Thread[] _serviceThreads = new Thread[(int)GameServiceType.NumServiceTypes];
+
+        private ServerManagerState _state = ServerManagerState.Created;
 
         public static ServerManager Instance { get; } = new();
 
@@ -139,6 +150,11 @@ namespace MHServerEmu.Core.Network
         /// </summary>
         public void RunServices()
         {
+            if (_state != ServerManagerState.Created)
+                throw new InvalidOperationException($"Invalid state {_state} when starting the ServerManager.");
+
+            _state = ServerManagerState.Starting;
+
             for (int i = 0; i < _services.Length; i++)
             {
                 GameServiceType serviceType = (GameServiceType)i;
@@ -163,6 +179,8 @@ namespace MHServerEmu.Core.Network
 
                 Logger.Info($"Service for type [{serviceType}] started");                
             }
+
+            _state = ServerManagerState.Running;
         }
 
         /// <summary>
@@ -170,6 +188,15 @@ namespace MHServerEmu.Core.Network
         /// </summary>
         public void ShutdownServices()
         {
+            // Ignore shutdown requests if already shutting down
+            if (_state == ServerManagerState.ShuttingDown)
+                return;
+
+            if (_state != ServerManagerState.Running)
+                throw new InvalidOperationException($"Invalid state {_state} when shutting down the ServerManager.");
+
+            _state = ServerManagerState.ShuttingDown;
+
             // Shut down services in reverse
             for (int i = _services.Length - 1; i >= 0; i--)
             {
@@ -201,6 +228,8 @@ namespace MHServerEmu.Core.Network
             }
 
             Logger.Info("All services shut down");
+
+            _state = ServerManagerState.Shutdown;
         }
 
         /// <summary>
