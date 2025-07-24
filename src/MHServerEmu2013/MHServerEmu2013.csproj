@@ -10,18 +10,18 @@
     <SourceRevisionId>build$([System.DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))</SourceRevisionId>
     <AssemblyVersion>$(InformationalVersion).0</AssemblyVersion>
     <FileVersion>$(AssemblyVersion)</FileVersion>
-    <Configurations>Debug;Release;Debug (1.10.0.69);Release (1.10.0.69)</Configurations>
+    <Configurations>Debug;Release;Debug 1.10.0.69;Release 1.10.0.69</Configurations>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug (1.10.0.69)|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug 1.10.0.69|AnyCPU'">
     <DefineConstants>$(DefineConstants);BUILD_1_10_0_69;DEBUG</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'" />
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (1.10.0.69)|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release 1.10.0.69|AnyCPU'">
     <DefineConstants>$(DefineConstants);BUILD_1_10_0_69;RELEASE</DefineConstants>
   </PropertyGroup>
 

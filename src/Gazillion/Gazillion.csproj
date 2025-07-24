@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <Configurations>Debug;Release;Debug (1.10.0.69);Release (1.10.0.69)</Configurations>
+    <Configurations>Debug;Release;Debug 1.10.0.69;Release 1.10.0.69</Configurations>
   </PropertyGroup>
 	
   <PropertyGroup>
@@ -17,7 +17,7 @@
     <NoWarn>1701;1702;CS8981</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug (1.10.0.69)|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug 1.10.0.69|AnyCPU'">
     <NoWarn>1701;1702;CS8981</NoWarn>
     <DefineConstants>$(DefineConstants);BUILD_1_10_0_69;DEBUG</DefineConstants>
   </PropertyGroup>
@@ -26,7 +26,7 @@
     <NoWarn>1701;1702;CS8981</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (1.10.0.69)|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release 1.10.0.69|AnyCPU'">
     <NoWarn>1701;1702;CS8981</NoWarn>
     <DefineConstants>$(DefineConstants);BUILD_1_10_0_69;RELEASE</DefineConstants>
   </PropertyGroup>
