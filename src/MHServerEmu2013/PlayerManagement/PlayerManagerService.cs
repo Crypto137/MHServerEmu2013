@@ -12,6 +12,8 @@ namespace MHServerEmu.PlayerManagement
 
         private static readonly Logger Logger = LogManager.CreateLogger();
 
+        private readonly HashSet<IFrontendClient> _clients = new();
+
         public GameServiceState State { get; private set; } = GameServiceState.Created;
 
         public PlayerManagerService()
@@ -33,14 +35,11 @@ namespace MHServerEmu.PlayerManagement
             switch (message)
             {
                 case ServiceMessage.AddClient addClient:
-                    // HACK: Add to a game with a delay to give the client time to connect to the grouping service
-                    Task.Run(async () => {
-                        await Task.Delay(50);
-                        ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, addClient);
-                    });
+                    _clients.Add(addClient.Client);
                     break;
 
                 case ServiceMessage.RemoveClient removeClient:
+                    _clients.Remove(removeClient.Client);
                     ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, removeClient);
                     break;
 
@@ -82,10 +81,12 @@ namespace MHServerEmu.PlayerManagement
         private void OnReadyForGameJoin(IFrontendClient client, in MessageBuffer messageBuffer)
         {
             NetMessageReadyForGameJoin readyForGameJoin = messageBuffer.DeserializeReadyForGameJoin();
-            Logger.Info($"Received NetMessageReadyForGameJoin");
-            Logger.Trace(readyForGameJoin.ToString());
+            Logger.Info($"NetMessageReadyForGameJoin\n{readyForGameJoin}");
 
             client.SendMessage(MuxChannel, NetMessageReadyAndLoggedIn.DefaultInstance);
+
+            ServiceMessage.AddClient addClient = new(client);
+            ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, addClient);
         }
     }
 }
