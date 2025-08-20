@@ -32,7 +32,7 @@ namespace MHServerEmu.PlayerManagement
         {
             switch (message)
             {
-                case GameServiceProtocol.AddClient addClient:
+                case ServiceMessage.AddClient addClient:
                     // HACK: Add to a game with a delay to give the client time to connect to the grouping service
                     Task.Run(async () => {
                         await Task.Delay(50);
@@ -40,11 +40,11 @@ namespace MHServerEmu.PlayerManagement
                     });
                     break;
 
-                case GameServiceProtocol.RemoveClient removeClient:
+                case ServiceMessage.RemoveClient removeClient:
                     ServerManager.Instance.SendMessageToService(GameServiceType.GameInstance, removeClient);
                     break;
 
-                case GameServiceProtocol.RouteMessageBuffer routeMessageBuffer:
+                case ServiceMessage.RouteMessageBuffer routeMessageBuffer:
                     switch ((ClientToGameServerMessage)routeMessageBuffer.MessageBuffer.MessageId)
                     {
                         case ClientToGameServerMessage.NetMessageReadyForGameJoin:
@@ -58,7 +58,7 @@ namespace MHServerEmu.PlayerManagement
 
                     break;
 
-                case GameServiceProtocol.RouteMessage routeMessage:
+                case ServiceMessage.RouteMessage routeMessage:
                     if (routeMessage.Protocol == typeof(FrontendProtocolMessage) && routeMessage.Message.Id == (uint)FrontendProtocolMessage.ClientCredentials)
                     {
                         FrontendClient client = (FrontendClient)routeMessage.Client;

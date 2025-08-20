@@ -7,9 +7,9 @@ using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Network;
 using MHServerEmu.Core.System;
 
-namespace MHServerEmu.Frontend
+namespace MHServerEmu.Auth
 {
-    public class AuthServer
+    public class AuthServer : IGameService
     {
         private static readonly Logger Logger = LogManager.CreateLogger();
 
@@ -19,12 +19,16 @@ namespace MHServerEmu.Frontend
         private CancellationTokenSource _cts;
         private HttpListener _listener;
 
+        public GameServiceState State { get; private set; } = GameServiceState.Created;
+
         public AuthServer()
         {
             var config = ConfigManager.Instance.GetConfig<AuthConfig>();
 
             _url = $"http://{config.AuthAddress}:{config.AuthPort}/";
         }
+
+        #region IGameService
 
         public async void Run()
         {
@@ -38,6 +42,7 @@ namespace MHServerEmu.Frontend
             _listener.Start();
 
             Logger.Info($"AuthServer is listening on {_url}...");
+            State = GameServiceState.Running;
 
             while (true)
             {
@@ -55,6 +60,23 @@ namespace MHServerEmu.Frontend
                 }
             }
         }
+
+        public void Shutdown()
+        {
+            State = GameServiceState.Shutdown;
+        }
+
+        public void ReceiveServiceMessage<T>(in T message) where T : struct, IGameServiceMessage
+        {
+            throw new NotImplementedException();
+        }
+
+        public string GetStatus()
+        {
+            return "Running";
+        }
+
+        #endregion
 
         private async Task HandleMessageAsync(HttpListenerRequest request, HttpListenerResponse response)
         {
@@ -82,15 +104,13 @@ namespace MHServerEmu.Frontend
 
             Logger.Info($"Sending AuthTicket to the game client on {request.RemoteEndPoint}");
 
-            var frontendConfig = ConfigManager.Instance.GetConfig<FrontendConfig>();
-
             AuthTicket ticket = AuthTicket.CreateBuilder()
                 .SetSessionId(_sessionIdGenerator.Generate())
                 .SetSessionToken(ByteString.Unsafe.FromBytes(CryptographyHelper.GenerateToken()))
                 .SetSessionKey(ByteString.Unsafe.FromBytes(CryptographyHelper.GenerateAesKey()))
                 .SetSuccess(true)
-                .SetFrontendServer(frontendConfig.PublicAddress)
-                .SetFrontendPort(frontendConfig.Port)
+                .SetFrontendServer(IFrontendClient.FrontendAddress)
+                .SetFrontendPort(IFrontendClient.FrontendPort)
                 .Build();
 
             await SendMessageAsync(ticket, response);

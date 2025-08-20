@@ -14,8 +14,6 @@ namespace MHServerEmu.Frontend
 
         private readonly HashSet<FrontendClient> _clients = new();
 
-        private AuthServer _authServer = new();
-
         public GameServiceState State { get; private set; } = GameServiceState.Created;
 
         #region IGameService Implementation
@@ -23,6 +21,9 @@ namespace MHServerEmu.Frontend
         public override void Run()
         {
             var config = ConfigManager.Instance.GetConfig<FrontendConfig>();
+
+            IFrontendClient.FrontendAddress = config.PublicAddress;
+            IFrontendClient.FrontendPort = config.Port;
 
             // -1 indicates infinite duration for both Task.Delay() and Socket.SendTimeout
             _receiveTimeoutMS = config.ReceiveTimeoutMS > 0 ? config.ReceiveTimeoutMS : -1;
@@ -32,8 +33,7 @@ namespace MHServerEmu.Frontend
                 return;
             
             Logger.Info($"FrontendServer is listening on {config.BindIP}:{config.Port}...");
-
-            Task.Run(_authServer.Run);
+            State = GameServiceState.Running;
         }
 
         public override void Shutdown()
@@ -54,7 +54,7 @@ namespace MHServerEmu.Frontend
 
         public string GetStatus()
         {
-            return $"Connections: {ConnectionCount} | Client: {_clients.Count}";
+            return $"Connections: {ConnectionCount} | Clients: {_clients.Count}";
         }
 
         #endregion

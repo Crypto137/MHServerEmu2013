@@ -45,15 +45,15 @@ namespace MHServerEmu.Games.Network.InstanceManagement
         {
             switch (message)
             {
-                case GameServiceProtocol.AddClient addClient:
+                case ServiceMessage.AddClient addClient:
                     _game.AddClient(addClient.Client);
                     break;
 
-                case GameServiceProtocol.RemoveClient removeClient:
+                case ServiceMessage.RemoveClient removeClient:
                     _game.RemoveClient(removeClient.Client);
                     break;
 
-                case GameServiceProtocol.RouteMessageBuffer routeMessageBuffer:
+                case ServiceMessage.RouteMessageBuffer routeMessageBuffer:
                     _game.ReceiveMessageBuffer(routeMessageBuffer.Client, routeMessageBuffer.MessageBuffer);
                     break;
 

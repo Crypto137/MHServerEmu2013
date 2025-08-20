@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Runtime.InteropServices;
+using MHServerEmu.Auth;
 using MHServerEmu.Core.Config;
 using MHServerEmu.Core.Helpers;
 using MHServerEmu.Core.Logging;
@@ -106,6 +107,7 @@ namespace MHServerEmu
             serverManager.RegisterGameService(new PlayerManagerService(), GameServiceType.PlayerManager);
             serverManager.RegisterGameService(new GroupingManagerService(), GameServiceType.GroupingManager);
             serverManager.RegisterGameService(new FrontendServer(), GameServiceType.Frontend);
+            serverManager.RegisterGameService(new AuthServer(), GameServiceType.Auth);
 
             serverManager.RunServices();
 

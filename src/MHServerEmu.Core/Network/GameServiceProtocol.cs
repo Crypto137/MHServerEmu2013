@@ -7,7 +7,7 @@
     {
     }
 
-    public static class GameServiceProtocol
+    public static class ServiceMessage
     {
         // NOTE: Although we are currently using readonly structs here, unfortunately it seems
         // using pattern matching to switch on the message type causes boxing. Need to figure

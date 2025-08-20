@@ -1,6 +1,6 @@
 ﻿using MHServerEmu.Core.Config;
 
-namespace MHServerEmu.Frontend
+namespace MHServerEmu.Auth
 {
     /// <summary>
     /// Contains configuration for the <see cref="AuthServer"/>.
