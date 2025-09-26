@@ -215,8 +215,12 @@ namespace MHServerEmu.Games.Commands
             if (@params.Length == 0)
                 return "Invalid parameters.";
 
-            // TODO: Fix this by doing it properly and setting the replicated field
-            return string.Empty;
+            string name = @params[0];
+            if (string.IsNullOrWhiteSpace(name))
+                return "Invalid parameters.";
+
+            invoker?.Player.SetName(name);
+            return $"Set player name to '{name}'.";
         }
 
         [Command("test", "Runs test code.")]

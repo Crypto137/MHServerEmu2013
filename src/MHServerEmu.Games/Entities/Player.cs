@@ -201,6 +201,12 @@ namespace MHServerEmu.Games.Entities
             base.ExitGame();
         }
 
+        public void SetName(string name)
+        {
+            PlayerName.Set(name);
+            CurrentAvatar?.SetPlayer(this);
+        }
+
         public Region GetRegion()
         {
             // This shouldn't need any null checks, at least for now
