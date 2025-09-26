@@ -11,8 +11,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MHServerEmu.Core", "src\MHS
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MHServerEmu.Games", "src\MHServerEmu.Games\MHServerEmu.Games.csproj", "{A4D3E4CA-88DE-4608-BF46-201319AF030E}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GameDatabaseBrowser", "src\GameDatabaseBrowser\GameDatabaseBrowser.csproj", "{28AECDF4-A5B1-448D-9782-AF41B155EE20}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MHServerEmu.Frontend", "src\MHServerEmu.Frontend\MHServerEmu.Frontend.csproj", "{439DC855-8657-4287-A05E-56A9EDA37D62}"
 EndProject
 Global
@@ -55,10 +53,6 @@ Global
 		{A4D3E4CA-88DE-4608-BF46-201319AF030E}.Release 1.10.0.69|Any CPU.Build.0 = Release 1.10.0.69|Any CPU
 		{A4D3E4CA-88DE-4608-BF46-201319AF030E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A4D3E4CA-88DE-4608-BF46-201319AF030E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{28AECDF4-A5B1-448D-9782-AF41B155EE20}.Debug 1.10.0.69|Any CPU.ActiveCfg = Debug 1.10.0.69|Any CPU
-		{28AECDF4-A5B1-448D-9782-AF41B155EE20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{28AECDF4-A5B1-448D-9782-AF41B155EE20}.Release 1.10.0.69|Any CPU.ActiveCfg = Release 1.10.0.69|Any CPU
-		{28AECDF4-A5B1-448D-9782-AF41B155EE20}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{439DC855-8657-4287-A05E-56A9EDA37D62}.Debug 1.10.0.69|Any CPU.ActiveCfg = Debug 1.10.0.69|Any CPU
 		{439DC855-8657-4287-A05E-56A9EDA37D62}.Debug 1.10.0.69|Any CPU.Build.0 = Debug 1.10.0.69|Any CPU
 		{439DC855-8657-4287-A05E-56A9EDA37D62}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
