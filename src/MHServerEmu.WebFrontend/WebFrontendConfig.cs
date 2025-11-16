@@ -9,5 +9,6 @@ namespace MHServerEmu.WebFrontend
         public bool EnableLoginRateLimit { get; private set; } = false;
         public int LoginRateLimitCostMS { get; private set; } = 30000;
         public int LoginRateLimitBurst { get; private set; } = 10;
+        public bool EnableWebApi { get; private set; } = true;
     }
 }

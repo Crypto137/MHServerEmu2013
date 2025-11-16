@@ -3,6 +3,7 @@ using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Network;
 using MHServerEmu.Core.Network.Web;
 using MHServerEmu.WebFrontend.Handlers;
+using MHServerEmu.WebFrontend.Handlers.WebApi;
 using MHServerEmu.WebFrontend.Network;
 
 namespace MHServerEmu.WebFrontend
@@ -38,6 +39,15 @@ namespace MHServerEmu.WebFrontend
             ProtobufWebHandler protobufHandler = new(config.EnableLoginRateLimit, TimeSpan.FromMilliseconds(config.LoginRateLimitCostMS), config.LoginRateLimitBurst);
             _webService.RegisterHandler("/Login/IndexPB", protobufHandler);
             _webService.RegisterHandler("/AuthServer/Login/IndexPB", protobufHandler);
+
+            // V10_TODO: MTXStore
+
+            if (config.EnableWebApi)
+            {
+                InitializeWebBackend();
+
+                // V10_TODO: Dashboard
+            }
         }
 
         #region IGameService Implementation
@@ -79,5 +89,10 @@ namespace MHServerEmu.WebFrontend
         }
 
         #endregion
+
+        private void InitializeWebBackend()
+        {
+            _webService.RegisterHandler("/ServerStatus", new ServerStatusWebHandler());
+        }
     }
 }
