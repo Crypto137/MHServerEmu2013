@@ -42,6 +42,8 @@
     <ProjectReference Include="..\MHServerEmu.Core\MHServerEmu.Core.csproj" />
     <ProjectReference Include="..\MHServerEmu.Frontend\MHServerEmu.Frontend.csproj" />
     <ProjectReference Include="..\MHServerEmu.Games\MHServerEmu.Games.csproj" />
+    <ProjectReference Include="..\MHServerEmu.Grouping\MHServerEmu.Grouping.csproj" />
+    <ProjectReference Include="..\MHServerEmu.PlayerManagement\MHServerEmu.PlayerManagement.csproj" />
     <ProjectReference Include="..\MHServerEmu.WebFrontend\MHServerEmu.WebFrontend.csproj" />
   </ItemGroup>
 

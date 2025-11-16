@@ -15,6 +15,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MHServerEmu.Frontend", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MHServerEmu.WebFrontend", "src\MHServerEmu.WebFrontend\MHServerEmu.WebFrontend.csproj", "{64069A32-9E86-427F-BB07-AE516F3E3807}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MHServerEmu.Grouping", "src\MHServerEmu.Grouping\MHServerEmu.Grouping.csproj", "{43EAA3F4-D165-43BA-9584-5BC6D5384991}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MHServerEmu.PlayerManagement", "src\MHServerEmu.PlayerManagement\MHServerEmu.PlayerManagement.csproj", "{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug 1.10.0.69|Any CPU = Debug 1.10.0.69|Any CPU
@@ -71,6 +75,22 @@ Global
 		{64069A32-9E86-427F-BB07-AE516F3E3807}.Release 1.10.0.69|Any CPU.Build.0 = Release 1.10.0.69|Any CPU
 		{64069A32-9E86-427F-BB07-AE516F3E3807}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{64069A32-9E86-427F-BB07-AE516F3E3807}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43EAA3F4-D165-43BA-9584-5BC6D5384991}.Debug 1.10.0.69|Any CPU.ActiveCfg = Debug 1.10.0.69|Any CPU
+		{43EAA3F4-D165-43BA-9584-5BC6D5384991}.Debug 1.10.0.69|Any CPU.Build.0 = Debug 1.10.0.69|Any CPU
+		{43EAA3F4-D165-43BA-9584-5BC6D5384991}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43EAA3F4-D165-43BA-9584-5BC6D5384991}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43EAA3F4-D165-43BA-9584-5BC6D5384991}.Release 1.10.0.69|Any CPU.ActiveCfg = Release 1.10.0.69|Any CPU
+		{43EAA3F4-D165-43BA-9584-5BC6D5384991}.Release 1.10.0.69|Any CPU.Build.0 = Release 1.10.0.69|Any CPU
+		{43EAA3F4-D165-43BA-9584-5BC6D5384991}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43EAA3F4-D165-43BA-9584-5BC6D5384991}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}.Debug 1.10.0.69|Any CPU.ActiveCfg = Debug 1.10.0.69|Any CPU
+		{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}.Debug 1.10.0.69|Any CPU.Build.0 = Debug 1.10.0.69|Any CPU
+		{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}.Release 1.10.0.69|Any CPU.ActiveCfg = Release 1.10.0.69|Any CPU
+		{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}.Release 1.10.0.69|Any CPU.Build.0 = Release 1.10.0.69|Any CPU
+		{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D1354ED-7FA4-4A6E-A34E-4B82E6043EAD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

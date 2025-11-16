@@ -2,7 +2,6 @@
 using Google.ProtocolBuffers;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Network;
-using MHServerEmu.Frontend;
 
 namespace MHServerEmu.PlayerManagement
 {
@@ -58,7 +57,7 @@ namespace MHServerEmu.PlayerManagement
                     break;
 
                 case ServiceMessage.SessionVerificationRequest sessionVerificationRequest:
-                    FrontendClient client = (FrontendClient)sessionVerificationRequest.Client;
+                    IFrontendClient client = (IFrontendClient)sessionVerificationRequest.Client;
                     client.AssignSession(new ClientSession());
 
                     client.SendMessage(MuxChannel, SessionEncryptionChanged.CreateBuilder()
