@@ -39,4 +39,10 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Data\Game\MTXStore\Catalog.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

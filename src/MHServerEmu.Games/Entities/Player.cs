@@ -59,6 +59,8 @@ namespace MHServerEmu.Games.Entities
 
         public Avatar CurrentAvatar { get; private set; }
 
+        public long GazillioniteBalance { get; set; }   // V10_TODO
+
         public Player(Game game) : base(game)
         {
             MissionManager = new(Game, this);

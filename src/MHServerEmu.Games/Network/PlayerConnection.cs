@@ -3,7 +3,6 @@ using Google.ProtocolBuffers;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.Network;
-using MHServerEmu.Core.Serialization;
 using MHServerEmu.Core.System.Time;
 using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.Commands;
@@ -14,6 +13,7 @@ using MHServerEmu.Games.Entities.Items;
 using MHServerEmu.Games.Entities.Locomotion;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
+using MHServerEmu.Games.MTXStore;
 using MHServerEmu.Games.Regions;
 
 namespace MHServerEmu.Games.Network
@@ -503,62 +503,25 @@ namespace MHServerEmu.Games.Network
         private bool OnGetCatalog(in MailboxMessage message)
         {
             var getCatalog = message.As<NetMessageGetCatalog>();
-            if (getCatalog == null) return Logger.WarnReturn(false, "OnGetCatalog(): getCatalog == null");
+            if (getCatalog == null) return Logger.WarnReturn(false, $"OnGetCatalog(): Failed to retrieve message");
 
-            SendMessage(Game.CatalogManager.GetCatalogItems());
-            return true;
+            return CatalogManager.Instance.OnGetCatalog(Player, getCatalog);
         }
 
         private bool OnGetCurrencyBalance(in MailboxMessage message)
         {
             var getCurrencyBalance = message.As<NetMessageGetCurrencyBalance>();
-            if (getCurrencyBalance == null) return Logger.WarnReturn(false, "OnGetCurrencyBalance(): getCurrencyBalance == null");
+            if (getCurrencyBalance == null) return Logger.WarnReturn(false, $"OnGetCurrencyBalance(): Failed to retrieve message");
 
-            SendMessage(NetMessageGetCurrencyBalanceResponse.CreateBuilder().SetCurrencyBalance(0).Build());
-            return true;
+            return CatalogManager.Instance.OnGetCurrencyBalance(Player);
         }
 
         private bool OnBuyItemFromCatalog(in MailboxMessage message)
         {
             var buyItemFromCatalog = message.As<NetMessageBuyItemFromCatalog>();
-            if (buyItemFromCatalog == null) return Logger.WarnReturn(false, "OnBuyItemFromCatalog(): buyItemFromCatalog == null");
+            if (buyItemFromCatalog == null) return Logger.WarnReturn(false, $"OnBuyItemFromCatalog(): Failed to retrieve message");
 
-            Prototype itemProto = Game.CatalogManager.GetItemProtoRefForSku(buyItemFromCatalog.SkuId).As<Prototype>();
-            if (itemProto is not ItemPrototype)
-            {
-                SendMessage(NetMessageBuyItemFromCatalogResponse.CreateBuilder()
-                    .SetDidSucceed(false)
-                    .SetCurrentCurrencyBalance(0)
-                    .SetErrorcode(BuyItemResultErrorCodes.BUY_RESULT_ERROR_UNKNOWN)
-                    .SetSkuId(buyItemFromCatalog.SkuId)
-                    .Build());
-
-                return true;
-            }
-
-            Inventory generalInv = Player.GetInventory(InventoryConvenienceLabel.General);
-
-            PrototypeId itemProtoRef = itemProto.DataRef;
-            PrototypeId rarityProtoRef = (PrototypeId)10195041726035595077;
-            int itemLevel = 1;
-            int seed = Game.Current.Random.Next();
-
-            ItemSpec itemSpec = new(itemProtoRef, rarityProtoRef, itemLevel, 0, null, seed, PrototypeId.Invalid);
-
-            using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
-            settings.EntityRef = itemProtoRef;
-            settings.ItemSpec = itemSpec;
-            settings.InventoryLocation = new(generalInv.OwnerId, generalInv.PrototypeDataRef);
-            Item item = Game.EntityManager.CreateEntity(settings) as Item;
-
-            SendMessage(NetMessageBuyItemFromCatalogResponse.CreateBuilder()
-                .SetDidSucceed(true)
-                .SetCurrentCurrencyBalance(0)
-                .SetErrorcode(BuyItemResultErrorCodes.BUY_RESULT_ERROR_SUCCESS)
-                .SetSkuId(buyItemFromCatalog.SkuId)
-                .Build());
-
-            return true;
+            return CatalogManager.Instance.OnBuyItemFromCatalog(Player, buyItemFromCatalog);
         }
 
         public bool OnCreateNewPlayerWithSelectedStartingAvatar(in MailboxMessage message)

@@ -8,6 +8,7 @@ using MHServerEmu.Core.Network;
 using MHServerEmu.Frontend;
 using MHServerEmu.Games;
 using MHServerEmu.Games.GameData;
+using MHServerEmu.Games.MTXStore;
 using MHServerEmu.Games.Network.InstanceManagement;
 using MHServerEmu.Grouping;
 using MHServerEmu.PlayerManagement;
@@ -214,7 +215,8 @@ namespace MHServerEmu
         {
             return PakFileSystem.Instance.Initialize()
                 && ProtocolDispatchTable.Instance.Initialize()
-                && GameDatabase.IsInitialized;
+                && GameDatabase.IsInitialized
+                && CatalogManager.Instance.Initialize();
         }
     }
 }

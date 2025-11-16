@@ -69,8 +69,6 @@ namespace MHServerEmu.Games
         public RegionManager RegionManager { get; }
         public EntityManager EntityManager { get; }
 
-        public CatalogManager CatalogManager { get; } = new();
-
         public TimeSpan FixedTimeBetweenUpdates { get; } = TimeSpan.FromMilliseconds(1000f / TargetFrameRate);
         public TimeSpan RealGameTime { get => (TimeSpan)_realGameTime; }
         public TimeSpan CurrentTime { get => GameEventScheduler != null ? GameEventScheduler.CurrentTime : _currentGameTime; }
