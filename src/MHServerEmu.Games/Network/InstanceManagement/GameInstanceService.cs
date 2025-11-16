@@ -36,9 +36,9 @@ namespace MHServerEmu.Games.Network.InstanceManagement
             State = GameServiceState.Shutdown;
         }
 
-        public string GetStatus()
+        public void GetStatus(Dictionary<string, long> statusDict)
         {
-            return "Running";
+
         }
 
         public void ReceiveServiceMessage<T>(in T message) where T : struct, IGameServiceMessage

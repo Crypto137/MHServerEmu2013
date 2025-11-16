@@ -1,0 +1,34 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <Configurations>Debug;Release;Debug 1.10.0.69;Release 1.10.0.69</Configurations>
+  </PropertyGroup>
+	
+  <PropertyGroup>
+    <AssemblyVersion>0.0.1.0</AssemblyVersion>
+    <FileVersion>$(AssemblyVersion)</FileVersion>
+    <InformationalVersion>$(AssemblyVersion)</InformationalVersion>
+  </PropertyGroup>
+	
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug 1.10.0.69|AnyCPU'">
+    <DefineConstants>$(DefineConstants);BUILD_1_10_0_69;DEBUG</DefineConstants>
+  </PropertyGroup>
+	
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release 1.10.0.69|AnyCPU'">
+    <DefineConstants>$(DefineConstants);BUILD_1_10_0_69;RELEASE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MHServerEmu.Core\MHServerEmu.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Google.ProtocolBuffers">
+      <HintPath>..\..\dep\protobuf-csharp\Google.ProtocolBuffers.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

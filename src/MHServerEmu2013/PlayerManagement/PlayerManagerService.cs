@@ -57,25 +57,22 @@ namespace MHServerEmu.PlayerManagement
 
                     break;
 
-                case ServiceMessage.RouteMessage routeMessage:
-                    if (routeMessage.Protocol == typeof(FrontendProtocolMessage) && routeMessage.Message.Id == (uint)FrontendProtocolMessage.ClientCredentials)
-                    {
-                        FrontendClient client = (FrontendClient)routeMessage.Client;
-                        client.AssignSession(new ClientSession());
+                case ServiceMessage.SessionVerificationRequest sessionVerificationRequest:
+                    FrontendClient client = (FrontendClient)sessionVerificationRequest.Client;
+                    client.AssignSession(new ClientSession());
 
-                        client.SendMessage(MuxChannel, SessionEncryptionChanged.CreateBuilder()
-                            .SetRandomNumberIndex(0)
-                            .SetEncryptedRandomNumber(ByteString.Empty)
-                            .Build());
-                    }
+                    client.SendMessage(MuxChannel, SessionEncryptionChanged.CreateBuilder()
+                        .SetRandomNumberIndex(0)
+                        .SetEncryptedRandomNumber(ByteString.Empty)
+                        .Build());
 
                     break;
             }
         }
 
-        public string GetStatus()
+        public void GetStatus(Dictionary<string, long> statusDict)
         {
-            return "Running";
+
         }
 
         private void OnReadyForGameJoin(IFrontendClient client, in MessageBuffer messageBuffer)

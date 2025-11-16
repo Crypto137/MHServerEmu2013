@@ -1,4 +1,6 @@
-﻿namespace MHServerEmu.Core.Network
+﻿using Gazillion;
+
+namespace MHServerEmu.Core.Network
 {
     /// <summary>
     /// Marker interface for <see cref="IGameService"/> messages.
@@ -30,11 +32,16 @@
             public readonly MessageBuffer MessageBuffer = messageBuffer;
         }
 
-        public readonly struct RouteMessage(IFrontendClient client, Type protocol, MailboxMessage message) : IGameServiceMessage
+        #region Auth
+
+        // Frontend -> PlayerManager
+        public readonly struct SessionVerificationRequest(IFrontendClient client, ClientCredentials clientCredentials)
+            : IGameServiceMessage
         {
             public readonly IFrontendClient Client = client;
-            public readonly Type Protocol = protocol;
-            public readonly MailboxMessage Message = message;
+            public readonly ClientCredentials ClientCredentials = clientCredentials;
         }
+
+        #endregion
     }
 }

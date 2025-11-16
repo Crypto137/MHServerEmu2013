@@ -222,7 +222,7 @@ namespace MHServerEmu.Games.Network.InstanceManagement
                 writer.Write(game.GameEventScheduler.GetPoolReportString());
                 writer.WriteLine();
 
-                writer.WriteLine($"Server Status:\n{ServerManager.Instance.GetServerStatus(true)}\n");
+                writer.WriteLine($"Server Status:\n{ServerManager.Instance.GetServerStatusString()}\n");
             }
 
             Logger.ErrorException(exception, $"Game instance crashed, report saved to {crashReportFilePath}");

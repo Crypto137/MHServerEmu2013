@@ -13,6 +13,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MHServerEmu.Games", "src\MH
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MHServerEmu.Frontend", "src\MHServerEmu.Frontend\MHServerEmu.Frontend.csproj", "{439DC855-8657-4287-A05E-56A9EDA37D62}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MHServerEmu.WebFrontend", "src\MHServerEmu.WebFrontend\MHServerEmu.WebFrontend.csproj", "{64069A32-9E86-427F-BB07-AE516F3E3807}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug 1.10.0.69|Any CPU = Debug 1.10.0.69|Any CPU
@@ -61,6 +63,14 @@ Global
 		{439DC855-8657-4287-A05E-56A9EDA37D62}.Release 1.10.0.69|Any CPU.Build.0 = Release 1.10.0.69|Any CPU
 		{439DC855-8657-4287-A05E-56A9EDA37D62}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{439DC855-8657-4287-A05E-56A9EDA37D62}.Release|Any CPU.Build.0 = Release|Any CPU
+		{64069A32-9E86-427F-BB07-AE516F3E3807}.Debug 1.10.0.69|Any CPU.ActiveCfg = Debug 1.10.0.69|Any CPU
+		{64069A32-9E86-427F-BB07-AE516F3E3807}.Debug 1.10.0.69|Any CPU.Build.0 = Debug 1.10.0.69|Any CPU
+		{64069A32-9E86-427F-BB07-AE516F3E3807}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{64069A32-9E86-427F-BB07-AE516F3E3807}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{64069A32-9E86-427F-BB07-AE516F3E3807}.Release 1.10.0.69|Any CPU.ActiveCfg = Release 1.10.0.69|Any CPU
+		{64069A32-9E86-427F-BB07-AE516F3E3807}.Release 1.10.0.69|Any CPU.Build.0 = Release 1.10.0.69|Any CPU
+		{64069A32-9E86-427F-BB07-AE516F3E3807}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{64069A32-9E86-427F-BB07-AE516F3E3807}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
