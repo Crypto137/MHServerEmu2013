@@ -114,7 +114,7 @@ namespace MHServerEmu.Games.MTXStore
 
             return new(
                 currentSkuId++,
-                [0],
+                [],
                 [itemProtoRef],
                 [new("en_us", calligraphyPath, calligraphyPath, string.Empty, price)],
                 new(type, order),

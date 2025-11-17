@@ -31,4 +31,10 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Data\Web\MTXStore\add-g.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

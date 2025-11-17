@@ -87,6 +87,7 @@ namespace MHServerEmu.WebFrontend.Handlers
                 .SetSuccess(true)
                 .SetFrontendServer(IFrontendClient.FrontendAddress)
                 .SetFrontendPort(IFrontendClient.FrontendPort)
+                .SetPlatformTicket("12345678")
                 .Build();
 
             // Respond with an error if session creation didn't succeed

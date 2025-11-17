@@ -3,6 +3,7 @@ using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Network;
 using MHServerEmu.Core.Network.Web;
 using MHServerEmu.WebFrontend.Handlers;
+using MHServerEmu.WebFrontend.Handlers.MTXStore;
 using MHServerEmu.WebFrontend.Handlers.WebApi;
 using MHServerEmu.WebFrontend.Network;
 
@@ -40,7 +41,9 @@ namespace MHServerEmu.WebFrontend
             _webService.RegisterHandler("/Login/IndexPB", protobufHandler);
             _webService.RegisterHandler("/AuthServer/Login/IndexPB", protobufHandler);
 
-            // V10_TODO: MTXStore
+            // MTXStore handlers are used for the Add G panel in the client UI.
+            _webService.RegisterHandler("/MTXStore/AddG", new AddGWebHandler());
+            //_webService.RegisterHandler("/MTXStore/AddG/Submit", new AddGSubmitWebHandler());
 
             if (config.EnableWebApi)
             {
