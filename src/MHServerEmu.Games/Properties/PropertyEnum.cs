@@ -615,31 +615,12 @@
         WaypointHotspotUnlock,
         XPTransfer,
         XPTransferToID,
-        // Properties below are ordered by their property info prototype id rather than alphabetically because
-        // they are added to the PropertyInfoTable dynamically during initialization rather than being pre-defined.
-        // We just add them to the enum and save ourselves the hassle of dealing with this edge case.
-        HighFlying,
-        InterruptRatingDefense,
-        InterruptRatingPowerBonusKeyword,
-        TestProp,
-        EvalLoopVarInt,
-        InterruptRatingPower,
-        MovementSpeedFlyChangePct,
-        MovementSpeedRunChangePct,
-#if !BUILD_1_10_0_69
-        ResistancePercentageChange,
-#endif
-        HealthAddBonusHardcore,
-#if !BUILD_1_10_0_69
-        DodgeChanceBonusNonDeminish,
-#endif
-        MissileIgnoresPitch,
-        AIResurrectsDead,
-        EvalRegisterAsset,
-        StatAccInvHealthBonusPct,
-        EvalRegisterBool,
-        InterpolateRotatioSpeed,
+
+        // Properties can be data-only and not have an enum entry here.
+        // Data-only properties are sorted by their prototype id and appended at the end of the property info table.
+        NumCodeProperties,
+
         // Invalid is defined as the highest possible enum value (which is 2047 because it's an unsigned 11-bit integer)
-        Invalid = 2047
+        Invalid = (int)Property.EnumMax
     }
 }
