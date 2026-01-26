@@ -1,9 +1,11 @@
 ﻿using System.Collections;
+using System.Runtime.CompilerServices;
 using MHServerEmu.Core.Collisions;
 using MHServerEmu.Core.Helpers;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.Serialization;
+using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.Common;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Calligraphy;
@@ -24,14 +26,16 @@ namespace MHServerEmu.Games.Properties
         private readonly PropertyList _aggregateList = new();
         private readonly Dictionary<PropertyId, CurveProperty> _curveList = new();
 
+        // Many PropertyCollections don't use parent/child relationships and watchers, so we allocate HashSets for these on demand.
+
         // Parent and child collections
         // NOTE: The client uses a tabletree structure to store these with PropertyCollection as key and an empty struct called EmptyDummyValue as value.
         // I'm not sure what the intention there was, but it makes zero sense for us to do it the same way.
-        private readonly HashSet<PropertyCollection> _parentCollections = new();
-        private readonly HashSet<PropertyCollection> _childCollections = new();
+        private HashSet<PropertyCollection> _parentCollections;
+        private HashSet<PropertyCollection> _childCollections;
 
         // A collection of registered watchers
-        private readonly HashSet<IPropertyChangeWatcher> _watchers = new();
+        private HashSet<IPropertyChangeWatcher> _watchers;
 
         public bool IsEmpty { get => _baseList.Count == 0 && _aggregateList.Count == 0 && _curveList.Count == 0; }
 
@@ -118,6 +122,12 @@ namespace MHServerEmu.Games.Properties
         }
 
         // 3 params
+
+        public PropertyValue this[PropertyEnum propertyEnum, int param0, int param1, PrototypeId param2]
+        {
+            get => GetProperty(new(propertyEnum, param0, param1, param2));
+            set => SetProperty(value, new(propertyEnum, param0, param1, param2));
+        }
 
         public PropertyValue this[PropertyEnum propertyEnum, PropertyParam param0, PropertyParam param1, PropertyParam param2]
         {
@@ -430,8 +440,11 @@ namespace MHServerEmu.Games.Properties
             }
 
             // Notify watchers
-            foreach (IPropertyChangeWatcher watcher in _watchers)
-                watcher.OnPropertyChange(id, newValue, oldValue, flags);
+            if (_watchers != null)
+            {
+                foreach (IPropertyChangeWatcher watcher in _watchers)
+                    watcher.OnPropertyChange(id, newValue, oldValue, flags);
+            }
         }
 
         /// <summary>
@@ -485,15 +498,19 @@ namespace MHServerEmu.Games.Properties
                 return Logger.WarnReturn(false, "AddChildCollection(): Attempted to add itself as a child");
 
             // To make this more safe we might want to add a recursive check of all ancestors here
-            if (_parentCollections.Contains(childCollection))
+            if (_parentCollections?.Contains(childCollection) == true)
                 return Logger.WarnReturn(false, "AddChildCollection(): Attempted to add a parent as a child");
 
             // Check for protections
-            if (IsNotProtected(Protection.Child) == false)
+            if (IsNotProtected(ProtectionType.Child) == false)
                 return Logger.WarnReturn(false, "AddChildCollection(): Property collection protection check failed (parent's child collection)");
 
-            if (childCollection.IsNotProtected(Protection.Parent) == false)
+            if (childCollection.IsNotProtected(ProtectionType.Parent) == false)
                 return Logger.WarnReturn(false, "AddChildCollection(): Property collection protection check failed (child's parent collection)");
+
+            // Allocate parent/child sets on demand
+            _childCollections ??= new();
+            childCollection._parentCollections ??= new();
 
             // Try to add the child collection
             bool addedToChildCollection = _childCollections.Add(childCollection);
@@ -526,15 +543,15 @@ namespace MHServerEmu.Games.Properties
                 return Logger.WarnReturn(false, "RemoveChildCollection(): childCollection is null");
 
             // Check for protections, but continue anyway
-            if (IsNotProtected(Protection.Child) == false)
+            if (IsNotProtected(ProtectionType.Child) == false)
                 Logger.Warn("RemoveChildCollection(): Property collection protection check failed (parent's child collection)");
 
-            if (childCollection.IsNotProtected(Protection.Parent) == false)
+            if (childCollection.IsNotProtected(ProtectionType.Parent) == false)
                 Logger.Warn("RemoveChildCollection(): Property collection protection check failed (child's parent collection)");
 
             // Remove parent / child references
-            bool childErasedInParent = _childCollections.Remove(childCollection);
-            bool parentErasedInChild = childCollection._parentCollections.Remove(this);
+            bool childErasedInParent = _childCollections?.Remove(childCollection) == true;
+            bool parentErasedInChild = childCollection._parentCollections?.Remove(this) == true;
 
             if (childErasedInParent == false)
                 return Logger.WarnReturn(false, "RemoveChildCollection(): Failed to remove from parent's child collection");
@@ -575,12 +592,24 @@ namespace MHServerEmu.Games.Properties
         /// <summary>
         /// Checks if this <see cref="PropertyCollection"/> is a child of the provided collection.
         /// </summary>
-        public bool IsChildOf(PropertyCollection parentCollection) => _parentCollections.Contains(parentCollection);
+        public bool IsChildOf(PropertyCollection parentCollection)
+        {
+            if (_parentCollections == null)
+                return false;
+
+            return _parentCollections.Contains(parentCollection);
+        }
 
         /// <summary>
         /// Checks if this <see cref="PropertyCollection"/> is a parent of the provided collection.
         /// </summary>
-        public bool HasChildCollection(PropertyCollection childCollection) => _childCollections.Contains(childCollection);
+        public bool HasChildCollection(PropertyCollection childCollection)
+        {
+            if (_childCollections == null)
+                return false;
+
+            return _childCollections.Contains(childCollection);
+        }
 
         /// <summary>
         /// Subscribes the provided <see cref="IPropertyChangeWatcher"/> for property changes happening in this <see cref="PropertyCollection"/>.
@@ -588,6 +617,8 @@ namespace MHServerEmu.Games.Properties
         public bool AttachWatcher(IPropertyChangeWatcher watcher)
         {
             // VERIFY: m_isDeallocating == false
+
+            _watchers ??= new();
 
             if (_watchers.Add(watcher) == false)
                 return Logger.WarnReturn(false, $"AttachWatcher(): Failed to attach property change watcher {watcher}");
@@ -606,7 +637,7 @@ namespace MHServerEmu.Games.Properties
             if (watcher == null)
                 return Logger.WarnReturn(false, "DetachWatcher(): watcher == null");
 
-            if (_watchers.Remove(watcher) == false)
+            if (_watchers?.Remove(watcher) != true)
                 return Logger.WarnReturn(false, $"DetachWatcher(): Failed to detach property change watcher {watcher}");
 
             watcher.Detach(false);
@@ -619,6 +650,9 @@ namespace MHServerEmu.Games.Properties
         /// </summary>
         public void RemoveAllWatchers()
         {
+            if (_watchers == null)
+                return;
+
             while (_watchers.Count > 0)
                 DetachWatcher(_watchers.First());
         }
@@ -788,6 +822,28 @@ namespace MHServerEmu.Games.Properties
             return success;
         }
 
+        public void GetPropertiesForMigration(List<(ulong, ulong)> propertyList)
+        {
+            PropertyEnum prevProperty = PropertyEnum.Invalid;
+            PropertyInfoPrototype propInfoProto = null;
+
+            // Need to use base list for this so that we don't accidentally migrate properties from attached collections.
+            foreach (var kvp in _baseList)
+            {
+                PropertyEnum propertyEnum = kvp.Key.Enum;
+                if (propertyEnum != prevProperty)
+                {
+                    PropertyInfo propInfo = GameDatabase.PropertyInfoTable.LookupPropertyInfo(propertyEnum);
+                    propInfoProto = propInfo.Prototype;
+                    prevProperty = propertyEnum;
+                }
+
+                // Migrate properties that are not saved to the database, but are supposed to be replicated for transfer
+                if (propInfoProto.ReplicateToDatabase == DatabasePolicy.None && propInfoProto.ReplicateForTransfer)
+                    propertyList.Add((kvp.Key.Raw, kvp.Value));
+            }
+        }
+
         /// <summary>
         /// Converts a <see cref="PropertyValue"/> to a <see cref="ulong"/> bit representation.
         /// </summary>
@@ -796,11 +852,11 @@ namespace MHServerEmu.Games.Properties
             switch (type)
             {
                 case PropertyDataType.Real:
-                case PropertyDataType.Curve: return BitConverter.SingleToUInt32Bits(value.RawFloat);
-                case PropertyDataType.Integer: return MathHelper.SwizzleSignBit(value.RawLong);
-                case PropertyDataType.Time: return MathHelper.SwizzleSignBit(value.RawLong - (long)Game.StartTime.TotalMilliseconds);
-                case PropertyDataType.Prototype: return (ulong)GameDatabase.DataDirectory.GetPrototypeEnumValue<Prototype>((PrototypeId)value.RawLong);
-                default: return (ulong)value.RawLong;
+                case PropertyDataType.Curve:        return BitConverter.SingleToUInt32Bits(value.RawFloat);
+                case PropertyDataType.Integer:      return MathHelper.SwizzleSignBit(value.RawLong);
+                case PropertyDataType.Time:         return MathHelper.SwizzleSignBit(value.RawLong - (long)Game.StartTime.TotalMilliseconds);
+                case PropertyDataType.Prototype:    return (ulong)GameDatabase.DataDirectory.GetPrototypeEnumValue<Prototype>((PrototypeId)value.RawLong);
+                default:                            return (ulong)value.RawLong;
             }
         }
 
@@ -812,11 +868,11 @@ namespace MHServerEmu.Games.Properties
             switch (type)
             {
                 case PropertyDataType.Real:
-                case PropertyDataType.Curve: return BitConverter.UInt32BitsToSingle((uint)bits);
-                case PropertyDataType.Integer: return MathHelper.UnswizzleSignBit(bits);
-                case PropertyDataType.Time: return (long)Game.StartTime.TotalMilliseconds + MathHelper.UnswizzleSignBit(bits);
-                case PropertyDataType.Prototype: return GameDatabase.DataDirectory.GetPrototypeFromEnumValue<Prototype>((int)bits);
-                default: return (long)bits;
+                case PropertyDataType.Curve:        return BitConverter.UInt32BitsToSingle((uint)bits);
+                case PropertyDataType.Integer:      return MathHelper.UnswizzleSignBit(bits);
+                case PropertyDataType.Time:         return (long)Game.StartTime.TotalMilliseconds + MathHelper.UnswizzleSignBit(bits);
+                case PropertyDataType.Prototype:    return GameDatabase.DataDirectory.GetPrototypeFromEnumValue<Prototype>((int)bits);
+                default:                            return (long)bits;
             }
         }
 
@@ -1010,6 +1066,9 @@ namespace MHServerEmu.Games.Properties
         /// </summary>
         private void RemoveAllChildren()
         {
+            if (_childCollections == null)
+                return;
+
             while (_childCollections.Count > 0)
                 RemoveChildCollection(_childCollections.First());
         }
@@ -1019,7 +1078,9 @@ namespace MHServerEmu.Games.Properties
         /// </summary>
         private void RemoveFromAllParents()
         {
-            // TODO: Call this during disposal if we implement IDisposable
+            if (_parentCollections == null)
+                return;
+
             while (_parentCollections.Count > 0)
                 RemoveChildCollection(this);
         }
@@ -1042,10 +1103,12 @@ namespace MHServerEmu.Games.Properties
             }
 
             // Aggregate all child collections, protect to prevent new child collections from being added during iteration
-            Protect(Protection.Child);
-            foreach (PropertyCollection child in _childCollections)
-                AggregateChildCollection(child);
-            ReleaseProtection(Protection.Child);
+            if (_childCollections != null)
+            {
+                using ProtectionScope protectionScope = new(this, ProtectionType.Child);
+                foreach (PropertyCollection child in _childCollections)
+                    AggregateChildCollection(child);
+            }
         }
 
         /// <summary>
@@ -1088,11 +1151,13 @@ namespace MHServerEmu.Games.Properties
 
             if (valueHasChanged)
             {
-                // Update parent aggregate values, protect to prevent new parent collections from being added during iteration
-                Protect(Protection.Parent);
-                foreach (PropertyCollection parent in _parentCollections)
-                    parent.UpdateAggregateValue(id, info, SetPropertyFlags.None);
-                ReleaseProtection(Protection.Parent);
+                if (_parentCollections != null)
+                {
+                    // Update parent aggregate values, protect to prevent new parent collections from being added during iteration
+                    using ProtectionScope protectionScope = new(this, ProtectionType.Parent);
+                    foreach (PropertyCollection parent in _parentCollections)
+                        parent.UpdateAggregateValue(id, info, SetPropertyFlags.None);
+                }
 
                 OnPropertyChange(id, aggregateValue, oldValue, SetPropertyFlags.None);
             }
@@ -1132,10 +1197,10 @@ namespace MHServerEmu.Games.Properties
         {
             PropertyValue aggregateValue = baseValue;
 
-            if (info.Prototype.AggMethod != AggregationMethod.None)
+            if (info.Prototype.AggMethod != AggregationMethod.None && _childCollections != null)
             {
                 // Aggregate values from all children, protect to prevent new child collections from being added during iteration
-                Protect(Protection.Child);
+                using ProtectionScope protectionScope = new(this, ProtectionType.Child);
                 foreach (PropertyCollection child in _childCollections)
                 {
                     if (child.GetAggregateValue(id, out PropertyValue childValue) == false)
@@ -1151,7 +1216,6 @@ namespace MHServerEmu.Games.Properties
                         hasValue = true;
                     }
                 }
-                ReleaseProtection(Protection.Child);
             }
 
             if (hasValue)
@@ -1170,10 +1234,12 @@ namespace MHServerEmu.Games.Properties
             }
 
             // Update parents, protect to prevent new parents from being added during iteration
-            Protect(Protection.Parent);
-            foreach (PropertyCollection parent in _parentCollections)
-                parent.UpdateAggregateValue(id, info, flags);
-            ReleaseProtection(Protection.Parent);
+            if (_parentCollections != null)
+            {
+                using ProtectionScope protectionScope = new(this, ProtectionType.Parent);
+                foreach (PropertyCollection parent in _parentCollections)
+                    parent.UpdateAggregateValue(id, info, flags);
+            }
         }
 
         /// <summary>
@@ -1325,29 +1391,48 @@ namespace MHServerEmu.Games.Properties
 
         #endregion
 
-        #region Protection Implementation
+        #region Protection
 
         // Protection flags to prevent parent / child collections from being added during iteration.
 
-        // NOTE: What the client does is that it creates a struct that increments a flag variable in its constructor
-        // and decrements it in the destructor. So when you leave the scope the destructor gets called and it "releases"
-        // the protection. We could potentially implement something similar with IDisposable and using, but that would be
-        // pretty hacky, so we are just going to increment and decrement everything manually.
+        private ProtectionCounts _protections = new();
 
-        // NOTE: Do we even need this?
+        private bool IsNotProtected(ProtectionType protection)
+        {
+            return _protections[(int)protection] == 0;
+        }
 
-        private enum Protection
+        private enum ProtectionType
         {
             Parent,
             Child,
-            NumProtections
+            NumProtectionTypes
         }
 
-        private readonly int[] _protections = new int[(int)Protection.NumProtections];
+        [InlineArray((int)ProtectionType.NumProtectionTypes)]
+        private struct ProtectionCounts
+        {
+            private int _element0;
+        }
 
-        private void Protect(Protection protection) => _protections[(int)protection]++;
-        private void ReleaseProtection(Protection protection) => _protections[(int)protection]--;
-        private bool IsNotProtected(Protection protection) => _protections[(int)protection] == 0;
+        private readonly struct ProtectionScope : IDisposable
+        {
+            private readonly PropertyCollection _collection;
+            private readonly int _index;
+
+            public ProtectionScope(PropertyCollection collection, ProtectionType type)
+            {
+                _collection = collection;
+                _index = (int)type;
+
+                _collection._protections[_index]++;
+            }
+
+            public void Dispose()
+            {
+                _collection._protections[_index]--;
+            }
+        }
 
         #endregion
 

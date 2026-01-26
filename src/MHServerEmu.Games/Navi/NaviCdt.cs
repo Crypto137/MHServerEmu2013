@@ -2,6 +2,7 @@
 using MHServerEmu.Core.Collisions;
 using MHServerEmu.Core.Helpers;
 using MHServerEmu.Core.Logging;
+using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.VectorMath;
 using System.Globalization;
 using System.Text;
@@ -122,7 +123,7 @@ namespace MHServerEmu.Games.Navi
         {
             List<NaviEdge> checkedEdges = new ();
             List<NaviEdge> collinearEdges = new ();
-            var naviSerialCheck = new NaviSerialCheck(this);
+            using NaviSerialCheck naviSerialCheck = new(this);
 
             foreach (var triangle in TriangleList.Iterate())
                 foreach (var edge in triangle.Edges)
@@ -359,7 +360,7 @@ namespace MHServerEmu.Games.Navi
                 }
             }
 
-            Stack<NaviTriangle> triStack = new ();
+            using var triStackHandle = StackPool<NaviTriangle>.Instance.Get(out PoolableStack<NaviTriangle> triStack);
 
             NaviEdge[] pointEdges = {
                 new (point, p0, NaviEdgeFlags.None),
@@ -610,7 +611,7 @@ namespace MHServerEmu.Games.Navi
             sidePoint1 = splitEdge.Points[side ? 1 : 0];
             pseudoList1.Insert(0, triangle.FindEdge(p0, sidePoint1));            
 
-            Stack<NaviTriangle> triStack = new ();
+            using var triStackHandle = StackPool<NaviTriangle>.Instance.Get(out PoolableStack<NaviTriangle> triStack);
 
             while (triangle.Contains(p1) == false)
             {
@@ -779,7 +780,7 @@ namespace MHServerEmu.Games.Navi
             var p0 = edge.Points[0];
             var p1 = edge.Points[1];
 
-            Stack<NaviEdge> edgeStack = new ();
+            using var edgeStackHandle = StackPool<NaviEdge>.Instance.Get(out PoolableStack<NaviEdge> edgeStack);
             edge.SetFlag(NaviEdgeFlags.Delaunay);
             edgeStack.Push(edge);
 
@@ -839,8 +840,10 @@ namespace MHServerEmu.Games.Navi
         {
             NaviTriangleState triangleState = new (triangle);
 
-            List<NaviEar> listEar = new ();
-            FixedPriorityQueue<NaviEar> queueEar = new (512);
+            using var listEarHandle = ListPool<NaviEar>.Instance.Get(out List<NaviEar> listEar);
+
+            using var queueEarListHandle = ListPool<NaviEar>.Instance.Get(512, out List<NaviEar> queueEarList);
+            FixedPriorityQueue<NaviEar> queueEar = new(queueEarList);
 
             NaviTriangle it = triangle;
             NaviTriangle nextTriangle;

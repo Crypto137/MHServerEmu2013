@@ -3,6 +3,7 @@ using MHServerEmu.Core.Collections;
 using MHServerEmu.Core.Collisions;
 using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.Logging;
+using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.Entities;
 using MHServerEmu.Games.GameData;
@@ -230,8 +231,8 @@ namespace MHServerEmu.Games.Navi
             if (removeExterior && _exteriorSeedEdge == null)  return;
             ClearMarkup();
 
-            Stack<MarkupState> stateStack = new ();
-            Stack<NaviEdge> edgeStack = new ();
+            using var stateStackHandle = StackPool<MarkupState>.Instance.Get(out PoolableStack<MarkupState> stateStack);
+            using var edgeStackHandle = StackPool<NaviEdge>.Instance.Get(out PoolableStack<NaviEdge> edgeStack);
             NaviTriangle triangle = _exteriorSeedEdge.Triangles[0] ?? _exteriorSeedEdge.Triangles[1];
 
             MarkupState state = new()
@@ -429,8 +430,8 @@ namespace MHServerEmu.Games.Navi
             var triangle = NaviCdt.FindTriangleAtPoint(center);
             if (triangle == null) return;
             triangle.PathingFlags |= PathFlags.BlackOutZone;
-            Stack<NaviTriangle> triStack = new();
-            var naviSerialCheck = new NaviSerialCheck(NaviCdt);
+            using var triStackHandle = StackPool<NaviTriangle>.Instance.Get(out PoolableStack<NaviTriangle> triStack);
+            using NaviSerialCheck naviSerialCheck = new(NaviCdt);
             float radiousSq = radius * radius;
             triStack.Push(triangle);
             while (triStack.Count > 0)
@@ -456,8 +457,8 @@ namespace MHServerEmu.Games.Navi
             var triangle = NaviCdt.FindTriangleAtPoint(bound.Center);
             if (triangle == null) return spawnableArea;
             spawnableArea += triangle.CalcSpawnableArea();
-            Stack<NaviTriangle> triStack = new();
-            var naviSerialCheck = new NaviSerialCheck(NaviCdt);
+            using var triStackHandle = StackPool<NaviTriangle>.Instance.Get(out PoolableStack<NaviTriangle> triStack);
+            using NaviSerialCheck naviSerialCheck = new(NaviCdt);
             triStack.Push(triangle);
             while (triStack.Count > 0)
             {

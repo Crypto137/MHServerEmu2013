@@ -1,9 +1,13 @@
 ﻿using MHServerEmu.Games.GameData;
+using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Powers;
 
 namespace MHServerEmu.Games.Properties
 {
-    public struct PropertyId
+    /// <summary>
+    /// Identifies a <see cref="PropertyValue"/>.
+    /// </summary>
+    public struct PropertyId : IComparable<PropertyId>, IEquatable<PropertyId>
     {
         public static readonly PropertyId Invalid = new();
 
@@ -148,6 +152,14 @@ namespace MHServerEmu.Games.Properties
         public PropertyId(PropertyEnum propertyEnum, int param0, PrototypeId param1)
         {
             Raw = new PropertyId(propertyEnum, (PropertyParam)param0, Property.ToParam(propertyEnum, 1, param1)).Raw;
+        }
+
+        /// <summary>
+        /// Constructs a <see cref="PropertyId"/> with the provided params
+        /// </summary>
+        public PropertyId(PropertyEnum propertyEnum, int param0, int param1, PrototypeId param2)
+        {
+            Raw = new PropertyId(propertyEnum, (PropertyParam)param0, (PropertyParam)param1, Property.ToParam(propertyEnum, 2, param2)).Raw;
         }
 
         /// <summary>
