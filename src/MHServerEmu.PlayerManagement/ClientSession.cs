@@ -8,5 +8,6 @@ namespace MHServerEmu.PlayerManagement
 
         public ulong Id { get => 0; }
         public object Account { get => null; }
+        public string Locale { get => "en_us"; }
     }
 }
