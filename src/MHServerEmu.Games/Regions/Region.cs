@@ -7,7 +7,6 @@ using MHServerEmu.Games.Common;
 using MHServerEmu.Games.DRAG;
 using MHServerEmu.Games.DRAG.Generators.Regions;
 using MHServerEmu.Games.Entities;
-using MHServerEmu.Games.Entities.Avatars;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Missions;
@@ -51,7 +50,7 @@ namespace MHServerEmu.Games.Regions
         public Aabb Aabb { get; private set; } = new();
 
         public Dictionary<uint, Area> Areas { get; } = new();
-        public IEnumerable<Cell> Cells { get => IterateCellsInVolume(Aabb); }
+        public CellSpatialPartition.ElementIterator<Aabb> Cells { get => IterateCellsInVolume(Aabb); }
         public IEnumerable<Entity> Entities { get => Game.EntityManager.IterateEntities(this); }
 
         // ArchiveData
@@ -283,12 +282,12 @@ namespace MHServerEmu.Games.Regions
             return null;
         }
 
-        public IEnumerable<Cell> IterateCellsInVolume<B>(B bounds) where B : IBounds
+        public CellSpatialPartition.ElementIterator<TVolume> IterateCellsInVolume<TVolume>(TVolume volume) where TVolume : IBounds
         {
-            if (CellSpatialPartition != null)
-                return CellSpatialPartition.IterateElementsInVolume(bounds);
-            else
-                return Enumerable.Empty<Cell>(); //new CellSpatialPartition.ElementIterator();
+            if (CellSpatialPartition == null)
+                return default;
+
+            return CellSpatialPartition.IterateElementsInVolume(volume);
         }
 
         #endregion
@@ -299,25 +298,25 @@ namespace MHServerEmu.Games.Regions
         public void UpdateEntityInSpatialPartition(WorldEntity entity) => EntitySpatialPartition.Update(entity);
         public bool RemoveEntityFromSpatialPartition(WorldEntity entity) => EntitySpatialPartition.Remove(entity);
 
-        public IEnumerable<WorldEntity> IterateEntitiesInRegion(EntityRegionSPContext context)
+        public EntityRegionSpatialPartition.ElementIterator<Aabb> IterateEntitiesInRegion(EntityRegionSPContext context)
         {
             return IterateEntitiesInVolume(Aabb, context);
         }
 
-        public IEnumerable<WorldEntity> IterateEntitiesInVolume<B>(B bound, EntityRegionSPContext context) where B : IBounds
+        public EntityRegionSpatialPartition.ElementIterator<TVolume> IterateEntitiesInVolume<TVolume>(TVolume volume, EntityRegionSPContext context) where TVolume : IBounds
         {
-            if (EntitySpatialPartition != null)
-                return EntitySpatialPartition.IterateElementsInVolume(bound, context);
-            else
-                return Enumerable.Empty<WorldEntity>();
+            if (EntitySpatialPartition == null)
+                return default;
+
+            return EntitySpatialPartition.IterateElementsInVolume(volume, context);
         }
 
-        public IEnumerable<Avatar> IterateAvatarsInVolume(in Sphere bound)
+        public EntityRegionSpatialPartition.RegionAvatarIterator IterateAvatarsInVolume(in Sphere bound)
         {
-            if (EntitySpatialPartition != null)
-                return EntitySpatialPartition.IterateAvatarsInVolume(bound);
-            else
-                return Enumerable.Empty<Avatar>();
+            if (EntitySpatialPartition == null)
+                return default;
+
+            return EntitySpatialPartition.IterateAvatarsInVolume(bound);
         }
 
         public void GetEntitiesInVolume<B>(List<WorldEntity> entities, B volume, EntityRegionSPContext context) where B : IBounds

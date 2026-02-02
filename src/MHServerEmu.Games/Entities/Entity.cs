@@ -121,6 +121,10 @@ namespace MHServerEmu.Games.Entities
         #region Flag Properties
 
         public bool IsDead { get => _flags.HasFlag(EntityFlags.IsDead); }
+        public bool IsNeverAffectedByPowers { get => _flags.HasFlag(EntityFlags.IsNeverAffectedByPowers); }
+        public bool IsHotspot { get => _flags.HasFlag(EntityFlags.IsHotspot); }
+        public bool IsCollidableHotspot { get => _flags.HasFlag(EntityFlags.IsCollidableHotspot); }
+        public bool IsReflectingHotspot { get => _flags.HasFlag(EntityFlags.IsReflectingHotspot); }
 
         #endregion
 

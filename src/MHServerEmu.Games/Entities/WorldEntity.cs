@@ -235,7 +235,7 @@ namespace MHServerEmu.Games.Entities
         public RegionLocation ClearWorldLocation()
         {
             if (RegionLocation.IsValid) ExitWorldRegionLocation.Set(RegionLocation);
-            if (Region != null && SpatialPartitionLocation.IsValid()) Region.RemoveEntityFromSpatialPartition(this);
+            if (Region != null && SpatialPartitionLocation.IsValid) Region.RemoveEntityFromSpatialPartition(this);
             RegionLocation oldLocation = new(RegionLocation);
             RegionLocation.Set(RegionLocation.Invalid);
             return oldLocation;
@@ -254,7 +254,7 @@ namespace MHServerEmu.Games.Entities
 
         public EntityRegionSPContext GetEntityRegionSPContext()
         {
-            EntityRegionSPContextFlags flags = EntityRegionSPContextFlags.ActivePartition;
+            EntityRegionSPContextFlags flags = EntityRegionSPContextFlags.PrimaryPartition;
             ulong playerRestrictedGuid = 0;
 
             WorldEntityPrototype entityProto = WorldEntityPrototype;
@@ -262,10 +262,8 @@ namespace MHServerEmu.Games.Entities
 
             // V10_NOTE: No CanCollideWithPowerUserItems in 1.10?
 
-            /* V10_TODO
             if (!(IsNeverAffectedByPowers || (IsHotspot && !IsCollidableHotspot && !IsReflectingHotspot)))
-                flags |= EntityRegionSPContextFlags.StaticPartition;
-            */
+                flags |= EntityRegionSPContextFlags.NotAffectedByPowersPartition;
 
             return new(flags, playerRestrictedGuid);
         }
