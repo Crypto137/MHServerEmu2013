@@ -15,8 +15,10 @@ namespace MHServerEmu.Games.Entities
 {
     #region Enums
 
+    // V10_NOTE: It seems entity flags are an optimization feature that didn't exist back in 1.10.
+    // Because many flags appear to be fast lookups for types/properties, we may be able to get away with keeping them.
     [Flags]
-    public enum EntityFlags : ulong     // V10_TODO: Update this for 1.10
+    public enum EntityFlags : ulong
     {
         Dormant                         = 1ul << 0,
         IsDead                          = 1ul << 1,
@@ -233,8 +235,6 @@ namespace MHServerEmu.Games.Entities
             Properties.Unbind();
         }
 
-        // NOTE: TestStatus and SetStatus can be potentially replaced with an indexer property
-
         public virtual void EnterGame(EntitySettings settings = null)
         {
             if (IsInGame) return;
@@ -273,6 +273,8 @@ namespace MHServerEmu.Games.Entities
             }
         }
 
+        // NOTE: TestStatus and SetStatus can be potentially replaced with an indexer property
+
         public bool TestStatus(EntityStatus status)
         {
             return Status.HasFlag(status);
@@ -282,6 +284,14 @@ namespace MHServerEmu.Games.Entities
         {
             if (value) Status |= status;
             else Status &= ~status;
+        }
+
+        protected void SetFlag(EntityFlags flag, bool value)
+        {
+            if (value)
+                _flags |= flag;
+            else
+                _flags &= ~flag;
         }
 
         public virtual void Destroy()

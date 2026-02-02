@@ -35,10 +35,13 @@ namespace MHServerEmu.Games.Network
 
         public Player Player { get; private set; }
 
+        public ulong PlayerDbId { get; }
+
         public PlayerConnection(Game game, IFrontendClient frontendClient) : base(MuxChannel, frontendClient)
         {
             Game = game;
             _frontendClient = frontendClient;
+            PlayerDbId = CurrentPlayerDbGuid++;
 
             AOI = new(this);
             TransferParams = new(this);
@@ -79,7 +82,7 @@ namespace MHServerEmu.Games.Network
             {
                 using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
                 settings.EntityRef = GameDatabase.GlobalsPrototype.DefaultPlayer;
-                settings.DbGuid = CurrentPlayerDbGuid++;
+                settings.DbGuid = PlayerDbId;
                 settings.OptionFlags = EntitySettingsOptionFlags.PopulateInventories;
                 settings.PlayerConnection = this;
                 settings.PlayerName = $"0x{settings.DbGuid:X}";

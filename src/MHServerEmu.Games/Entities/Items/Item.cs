@@ -12,6 +12,7 @@ namespace MHServerEmu.Games.Entities.Items
 
         public Item(Game game) : base(game)
         {
+            SetFlag(EntityFlags.IsNeverAffectedByPowers, true);
         }
 
         public override bool Initialize(EntitySettings settings)

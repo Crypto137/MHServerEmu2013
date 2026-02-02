@@ -4,6 +4,7 @@
     {
         public Spawner(Game game) : base(game)
         {
+            SetFlag(EntityFlags.IsNeverAffectedByPowers, true);
         }
     }
 }
