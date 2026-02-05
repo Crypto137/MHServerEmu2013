@@ -9,6 +9,7 @@ using MHServerEmu.Games.Entities.Avatars;
 using MHServerEmu.Games.Entities.Locomotion;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
+using MHServerEmu.Games.Navi;
 using MHServerEmu.Games.Network;
 using MHServerEmu.Games.Properties;
 using MHServerEmu.Games.Regions;
@@ -44,21 +45,26 @@ namespace MHServerEmu.Games.Entities
     {
         private static readonly Logger Logger = LogManager.CreateLogger();
 
+        private RegionLocation _regionLocation;
+        private RegionLocationSafe _exitWorldRegionLocation;
+
+        public ref RegionLocation RegionLocation { get => ref _regionLocation; }
+        public bool IsInWorld { get => _regionLocation.IsValid; }
+        public Region Region { get => _regionLocation.Region; }
+        public NaviMesh NaviMesh { get => _regionLocation.NaviMesh; }
+        public Cell Cell { get => _regionLocation.Cell; }
+        public Area Area { get => _regionLocation.Area; }
+        public Orientation Orientation { get => _regionLocation.Orientation; }
+        public ref RegionLocationSafe ExitWorldRegionLocation { get => ref _exitWorldRegionLocation; }
+
         public ConditionCollection ConditionCollection { get; private set; }
-        public RegionLocation RegionLocation { get; private set; } = new();
-        public Cell Cell { get => RegionLocation.Cell; }
-        public Area Area { get => RegionLocation.Area; }
-        public RegionLocationSafe ExitWorldRegionLocation { get; private set; } = new();
         public EntityRegionSpatialPartitionLocation SpatialPartitionLocation { get; }
         public Aabb RegionBounds { get; set; }
         public Bounds Bounds { get; set; } = new();
-        public Region Region { get => RegionLocation.Region; }
-        public Orientation Orientation { get => RegionLocation.Orientation; }
         public WorldEntityPrototype WorldEntityPrototype { get => Prototype as WorldEntityPrototype; }
         public bool ShouldSnapToFloorOnSpawn { get; private set; }
         public Locomotor Locomotor { get; protected set; }
         public virtual Bounds EntityCollideBounds { get => Bounds; set { } }
-        public bool IsInWorld { get => RegionLocation.IsValid; }
         public bool IsAliveInWorld { get => IsInWorld && IsDead == false; }
         public virtual bool IsMovementAuthoritative { get => true; }
 
@@ -161,19 +167,19 @@ namespace MHServerEmu.Games.Entities
             bool orientationChanged = false;
             Cell previousCell = Cell;
 
-            RegionLocation preChangeLocation = new(RegionLocation);
+            RegionLocation preChangeLocation = _regionLocation;  // copy
             Region region = Game.RegionManager.GetRegion(preChangeLocation.RegionId);
             if (region == null) return ChangePositionResult.NotChanged;
 
             if (position.HasValue && (flags.HasFlag(ChangePositionFlags.ForceUpdate) || preChangeLocation.Position != position))
             {
-                var result = RegionLocation.SetPosition(position.Value);
+                RegionLocation.SetPositionResult result = _regionLocation.SetPosition(position.Value);
 
                 if (result != RegionLocation.SetPositionResult.Success)     // onSetPositionFailure()
                 {
                     return Logger.WarnReturn(ChangePositionResult.NotChanged, string.Format(
                         "ChangeRegionPosition(): Failed to set entity new position (Moved out of world)\n\tEntity: {0}\n\tResult: {1}\n\tPrev Loc: {2}\n\tNew Pos: {3}",
-                        this, result, RegionLocation, position));
+                        this, result, _regionLocation.ToString(), position));
                 }
 
                 if (Bounds.Geometry != GeometryType.None)
@@ -189,7 +195,7 @@ namespace MHServerEmu.Games.Entities
 
             if (orientation.HasValue && (flags.HasFlag(ChangePositionFlags.ForceUpdate) || preChangeLocation.Orientation != orientation))
             {
-                RegionLocation.Orientation = orientation.Value;
+                _regionLocation.SetOrientation(orientation.Value);
 
                 if (Bounds.Geometry != GeometryType.None)
                     Bounds.Orientation = orientation.Value;
@@ -205,8 +211,8 @@ namespace MHServerEmu.Games.Entities
 
             UpdateRegionBounds(); // Add to Quadtree
 
-            if (RegionLocation.IsValid)
-                ExitWorldRegionLocation.Set(RegionLocation);
+            if (_regionLocation.IsValid)
+                _exitWorldRegionLocation.Set(ref _regionLocation);
 
             if (flags.HasFlag(ChangePositionFlags.DoNotSendToClients) == false)
             {
@@ -234,10 +240,15 @@ namespace MHServerEmu.Games.Entities
 
         public RegionLocation ClearWorldLocation()
         {
-            if (RegionLocation.IsValid) ExitWorldRegionLocation.Set(RegionLocation);
-            if (Region != null && SpatialPartitionLocation.IsValid) Region.RemoveEntityFromSpatialPartition(this);
-            RegionLocation oldLocation = new(RegionLocation);
-            RegionLocation.Set(RegionLocation.Invalid);
+            if (_regionLocation.IsValid)
+                _exitWorldRegionLocation.Set(ref _regionLocation);
+
+            if (Region != null && SpatialPartitionLocation.IsValid)
+                Region.RemoveEntityFromSpatialPartition(this);
+
+            RegionLocation oldLocation = _regionLocation;
+            _regionLocation = RegionLocation.Invalid;
+
             return oldLocation;
         }
 
@@ -279,7 +290,7 @@ namespace MHServerEmu.Games.Entities
         {
             SetStatus(EntityStatus.EnteringWorld, true);
 
-            RegionLocation.Region = region;
+            _regionLocation.SetRegion(region);
 
             //Physics.AcquireCollisionId();
 

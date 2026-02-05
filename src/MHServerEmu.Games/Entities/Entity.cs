@@ -1,4 +1,5 @@
-﻿using MHServerEmu.Core.Extensions;
+﻿using System.Runtime.CompilerServices;
+using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.Serialization;
@@ -402,7 +403,7 @@ namespace MHServerEmu.Games.Entities
 
         #region Inventory Management
 
-        public RegionLocation GetOwnerLocation()
+        public ref RegionLocation GetOwnerLocation(out bool found)
         {
             Entity owner = GetOwner();
             while (owner != null)
@@ -410,22 +411,26 @@ namespace MHServerEmu.Games.Entities
                 if (owner is WorldEntity worldEntity)
                 {
                     if (worldEntity.IsInWorld)
-                        return worldEntity.RegionLocation;
-                }
-                else
-                {
-                    if (owner is Player player)
                     {
-                        Avatar avatar = player.CurrentAvatar;
-                        if (avatar != null && avatar.IsInWorld)
-                            return avatar.RegionLocation;
+                        found = true;
+                        return ref worldEntity.RegionLocation;
+                    }
+                }
+                else if (owner is Player player)
+                {
+                    Avatar avatar = player.CurrentAvatar;
+                    if (avatar != null && avatar.IsInWorld)
+                    {
+                        found = true;
+                        return ref avatar.RegionLocation;
                     }
                 }
 
                 owner = owner.GetOwner();
             }
 
-            return null;
+            found = false;
+            return ref Unsafe.NullRef<RegionLocation>();
         }
 
         public Entity GetOwner()
