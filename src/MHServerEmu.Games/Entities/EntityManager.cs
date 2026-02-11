@@ -51,14 +51,11 @@ namespace MHServerEmu.Games.Entities
         private readonly HashSet<ulong> _entitiesPendingCondemnedPowerDeletion = new();
 
         private readonly LinkedList<ulong> _entitiesPendingDestruction = new();
-        private readonly Stack<LinkedListNode<ulong>> _entityDestroyListNodeStack = new();
-        private int _numDestroyListNodeChunks = 0;
 
         //public Event<DestroyEntityEvent> DestroyEntityEvent = new(); V10_TODO
 
         private ulong _nextEntityId = 1;
         private ulong GetNextEntityId() { return _nextEntityId++; }
-        public ulong PeekNextEntityId() { return _nextEntityId; }
 
         public int EntityCount { get => _entityDict.Count; }
         public int PlayerCount { get => Players.Count; }
@@ -186,7 +183,7 @@ namespace MHServerEmu.Games.Entities
                 }
             }
 
-            entity.ApplyInitialReplicationState(settings);
+            entity.ApplyInitialReplicationState(ref settings);
 
             // Finish deserialization
             entity.SetStatus(EntityStatus.HasArchiveData, false);
@@ -198,7 +195,7 @@ namespace MHServerEmu.Games.Entities
             if (initSuccess == false)
             {
                 // Entity initialization failed
-                Logger.Warn($"CreateEntity(): Entity initialization failed");
+                Logger.Warn($"CreateEntity(): Initialization failed for entity [{entity}]");
                 entity.Destroy();
                 return null;
             }
@@ -226,7 +223,7 @@ namespace MHServerEmu.Games.Entities
 
             // Add the new entity to an inventory if there is a location specified
             InventoryLocation invLoc = settings.InventoryLocation;
-            if (invLoc != null && invLoc.ContainerId != Entity.InvalidId)
+            if (invLoc.ContainerId != Entity.InvalidId)
             {
                 ulong ownerId = invLoc.ContainerId;
                 PrototypeId ownerInventoryRef = invLoc.InventoryRef;
@@ -246,9 +243,10 @@ namespace MHServerEmu.Games.Entities
                     return Logger.WarnReturn(false, $"FinalizeEntity(): Unable to find inventory {ownerInventory} in owner entity {owner} to put entity {entity} in it");
 
                 // Attempt to put the entity in the inventory it belongs to
+                InventoryLocation prevInvLoc = settings.InventoryLocationPrevious;
                 settings.Results.InventoryResult = Inventory.ChangeEntityInventoryLocationOnCreate(entity, ownerInventory, invLoc.Slot,
                     settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.IsPacked), settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.DoNotAllowStackingOnCreate) == false,
-                    settings.InventoryLocationPrevious);
+                    ref prevInvLoc);
 
                 // Report error if something went wrong
                 if (settings.Results.InventoryResult != InventoryResult.Success)
@@ -286,7 +284,9 @@ namespace MHServerEmu.Games.Entities
                     }
                     */
 
-                    worldEntity.EnterWorld(region, position, settings.Orientation, settings);
+                    // NOTE: While this is not client-accurate, if we don't clean up the entity here, it will stay in the message handler collection and cause a memory leak
+                    if (worldEntity.EnterWorld(region, position, settings.Orientation, settings) == false)
+                        return false;
                 }
             }
 
@@ -405,6 +405,17 @@ namespace MHServerEmu.Games.Entities
             if (dbGuid == 0) return Logger.WarnReturn<T>(null, "GetEntityByDbGuid(): dbGuid == 0");
 
             return GetEntityByDbGuid(dbGuid, flags & ~GetEntityFlags.DestroyedOnly) as T;
+        }
+
+        public Player GetPlayerByName(string playerName)
+        {
+            foreach (Player player in Players)
+            {
+                if (player.GetName().Equals(playerName, StringComparison.OrdinalIgnoreCase))
+                    return player;
+            }
+
+            return null;
         }
 
         public bool IsEntityArchived(ulong entityId)
@@ -526,28 +537,14 @@ namespace MHServerEmu.Games.Entities
             */
         }
 
-        private LinkedListNode<ulong> GetDestroyListNode(ulong entityId)
+        private static LinkedListNode<ulong> GetDestroyListNode(ulong entityId)
         {
-            const int NodeChunkSize = 256;
-
-            if (_entityDestroyListNodeStack.Count == 0)
-            {
-                Logger.Trace($"GetDestroyListNode(): Allocating chunk {++_numDestroyListNodeChunks} for {_game}");
-                for (int i = 0; i < NodeChunkSize; i++)
-                    _entityDestroyListNodeStack.Push(new(0));
-            }
-
-            LinkedListNode<ulong> destroyNode = _entityDestroyListNodeStack.Pop();
-            destroyNode.Value = entityId;
-            return destroyNode;
+            return EntityDestroyListNodePool.Instance.Get(entityId);
         }
 
-        private void ReturnDestroyListNode(LinkedListNode<ulong> destroyNode)
+        private static void ReturnDestroyListNode(LinkedListNode<ulong> destroyNode)
         {
-            if (destroyNode.List != null)
-                throw new Exception("Attempted to return a destroy list node that is currently in a list.");
-
-            _entityDestroyListNodeStack.Push(destroyNode);
+            EntityDestroyListNodePool.Instance.Return(destroyNode);
         }
 
         private bool ProcessDestroyed()

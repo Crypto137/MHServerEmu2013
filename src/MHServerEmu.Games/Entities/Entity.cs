@@ -95,6 +95,8 @@ namespace MHServerEmu.Games.Entities
 
         private readonly EventGroup _pendingEvents = new();
 
+        private InventoryLocation _inventoryLocation = InventoryLocation.Invalid;
+
         private EntityFlags _flags;
 
         public ulong Id { get; set; }
@@ -117,8 +119,8 @@ namespace MHServerEmu.Games.Entities
         public bool CanSendArchiveMessages { get => IsInGame; }
 
         public InventoryCollection InventoryCollection { get; } = new();
-        public InventoryLocation InventoryLocation { get; private set; } = new();
-        public ulong OwnerId { get => InventoryLocation.ContainerId; }
+        public ref InventoryLocation InventoryLocation { get => ref _inventoryLocation; }
+        public ulong OwnerId { get => _inventoryLocation.ContainerId; }
         public bool IsRootOwner { get => OwnerId == 0; }
 
         #region Flag Properties
@@ -221,7 +223,7 @@ namespace MHServerEmu.Games.Entities
         {
         }
 
-        public virtual bool ApplyInitialReplicationState(EntitySettings settings)
+        public virtual bool ApplyInitialReplicationState(ref EntitySettings settings)
         {
             return true;
         }
@@ -351,15 +353,15 @@ namespace MHServerEmu.Games.Entities
         {
         }
 
-        public virtual void OnSelfRemovedFromOtherInventory(InventoryLocation prevInvLoc)
+        public virtual void OnSelfRemovedFromOtherInventory(ref InventoryLocation prevInvLoc)
         {
         }
 
-        public virtual void OnOtherEntityAddedToMyInventory(Entity entity, InventoryLocation invLoc, bool unpackedArchivedEntity)
+        public virtual void OnOtherEntityAddedToMyInventory(Entity entity, ref InventoryLocation invLoc, bool unpackedArchivedEntity)
         {
         }
 
-        public virtual void OnOtherEntityRemovedFromMyInventory(Entity entity, InventoryLocation invLoc)
+        public virtual void OnOtherEntityRemovedFromMyInventory(Entity entity, ref InventoryLocation invLoc)
         {
         }
 

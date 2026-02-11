@@ -203,6 +203,15 @@ namespace MHServerEmu.Games.Entities
             base.ExitGame();
         }
 
+        /// <summary>
+        /// Returns the name of the player.
+        /// </summary>
+        public string GetName()
+        {
+            // V10_NOTE: No avatar index in 1.10.
+            return PlayerName.Get();
+        }
+
         public void SetName(string name)
         {
             PlayerName.Set(name);
@@ -217,9 +226,9 @@ namespace MHServerEmu.Games.Entities
 
         #region Inventories
 
-        public override void OnOtherEntityAddedToMyInventory(Entity entity, InventoryLocation invLoc, bool unpackedArchivedEntity)
+        public override void OnOtherEntityAddedToMyInventory(Entity entity, ref InventoryLocation invLoc, bool unpackedArchivedEntity)
         {
-            base.OnOtherEntityAddedToMyInventory(entity, invLoc, unpackedArchivedEntity);
+            base.OnOtherEntityAddedToMyInventory(entity, ref invLoc, unpackedArchivedEntity);
 
             if (entity is Avatar avatar)
             {
