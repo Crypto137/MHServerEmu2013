@@ -7,12 +7,17 @@ namespace MHServerEmu.Games.Entities.Locomotion
     public class Locomotor
     {
         private WorldEntity _owner;
-        public LocomotionState LocomotionState { get; private set; }
+
+        private LocomotionState _locomotionState = new();
+        private LocomotionState _lastLocomotionState = new();
+        private LocomotionState _lastSyncState = new();
+
+        public ref LocomotionState LocomotionState { get => ref _locomotionState; }
         public float DefaultRunSpeed { get => _runSpeed; }
         public float Height { get; private set; }
 
         public bool SupportsWalking { get; private set; }
-        public LocomotionState LastSyncState { get; private set; }
+        public ref LocomotionState LastSyncState { get => ref _lastSyncState; }
 
         private float _giveUpDistanceThreshold;
         private TimeSpan _giveUpTime;
@@ -22,13 +27,9 @@ namespace MHServerEmu.Games.Entities.Locomotion
         private float _rotationSpeed;
 
         private LocomotorMethod _defaultMethod;
-        private LocomotionState _lastLocomotionState;
 
         public Locomotor()
         {
-            LocomotionState = new();
-            _lastLocomotionState = new();
-            LastSyncState = new();
         }
 
         public void Initialize(LocomotorPrototype locomotorProto, WorldEntity entity, float heightOverride = 0.0f)
@@ -51,8 +52,8 @@ namespace MHServerEmu.Games.Entities.Locomotion
                     _defaultMethod = worldEntityProto.NaviMethod;
             }
 
-            LocomotionState.Method = _defaultMethod;
-            LocomotionState.BaseMoveSpeed = DefaultRunSpeed;
+            _locomotionState.Method = _defaultMethod;
+            _locomotionState.BaseMoveSpeed = DefaultRunSpeed;
         }
 
         public void SetGiveUpLimits(float distanceThreshold, TimeSpan time)
@@ -61,10 +62,10 @@ namespace MHServerEmu.Games.Entities.Locomotion
             _giveUpTime = time;
         }
 
-        public void SetSyncState(LocomotionState locomotionState, Vector3 syncPosition, Orientation syncOrientation)
+        public void SetSyncState(ref LocomotionState locomotionState, Vector3 syncPosition, Orientation syncOrientation)
         {
-            LastSyncState.Set(locomotionState);
-            LocomotionState.Set(locomotionState);
+            _lastSyncState.Set(ref locomotionState);
+            _locomotionState.Set(ref locomotionState);
 
             PushLocomotionStateChanges();
         }
@@ -73,8 +74,8 @@ namespace MHServerEmu.Games.Entities.Locomotion
         {
             if (LocomotionState.LocomotionFlags.HasFlag(LocomotionFlags.IsSyncMoving) == false)
             {
-                _owner.OnLocomotionStateChanged(_lastLocomotionState, LocomotionState);
-                _lastLocomotionState.Set(LocomotionState);
+                _owner.OnLocomotionStateChanged(ref _lastLocomotionState, ref _locomotionState);
+                _lastLocomotionState.Set(ref _locomotionState);
             }
         }
     }

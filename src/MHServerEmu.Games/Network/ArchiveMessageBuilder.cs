@@ -45,12 +45,15 @@ namespace MHServerEmu.Games.Network
                     builder.SetAreaId(regionLocation.AreaId);
 #endif
 
-                    LocomotionState locomotionState = worldEntity.Locomotor?.LocomotionState;
-                    LocomotionMessageFlags locoFieldFlags = LocomotionState.GetFieldFlags(locomotionState, null, true);
+                    ref LocomotionState locomotionState = ref LocomotionState.Null;
+                    if (worldEntity.Locomotor != null)
+                        locomotionState = ref worldEntity.Locomotor.LocomotionState;
+
+                    LocomotionMessageFlags locoFieldFlags = LocomotionState.GetFieldFlags(ref locomotionState, ref LocomotionState.Null, true);
                     if (locoFieldFlags.HasFlag(LocomotionMessageFlags.NoLocomotionState) == false)
                     {
                         NetStructLocomotionState.Builder locomotionStateBuilder = NetStructLocomotionState.CreateBuilder();
-                        LocomotionState.SerializeTo(locomotionStateBuilder, locomotionState, locoFieldFlags);
+                        LocomotionState.SerializeTo(locomotionStateBuilder, ref locomotionState, locoFieldFlags);
                         builder.SetLocomotionState(locomotionStateBuilder.Build());
                     }
                 }
@@ -94,14 +97,14 @@ namespace MHServerEmu.Games.Network
         /// <summary>
         /// Builds <see cref="NetMessageLocomotionStateUpdate"/> for the provided <see cref="WorldEntity"/>.
         /// </summary>
-        public static NetMessageLocomotionStateUpdate BuildLocomotionStateUpdateMessage(WorldEntity worldEntity, LocomotionState oldLocomotionState, LocomotionState newLocomotionState,
+        public static NetMessageLocomotionStateUpdate BuildLocomotionStateUpdateMessage(WorldEntity worldEntity, ref LocomotionState oldLocomotionState, ref LocomotionState newLocomotionState,
             bool withPathNodes)
         {
             NetStructLocomotionState.Builder locomotionStateBuilder = NetStructLocomotionState.CreateBuilder();
 
             // We reuse LocomotionMessageFlags from archive implementation used in later version for convenience
-            LocomotionMessageFlags fieldFlags = LocomotionState.GetFieldFlags(newLocomotionState, oldLocomotionState, withPathNodes);
-            LocomotionState.SerializeTo(locomotionStateBuilder, newLocomotionState, fieldFlags);
+            LocomotionMessageFlags fieldFlags = LocomotionState.GetFieldFlags(ref newLocomotionState, ref oldLocomotionState, withPathNodes);
+            LocomotionState.SerializeTo(locomotionStateBuilder, ref newLocomotionState, fieldFlags);
 
             // optional uint64 entityPrototypeId - is this needed for internal builds?
             return NetMessageLocomotionStateUpdate.CreateBuilder()
@@ -124,12 +127,15 @@ namespace MHServerEmu.Games.Network
 
             // TODO: entity prototype ref
 
-            LocomotionState locomotionState = worldEntity.Locomotor?.LocomotionState;
-            LocomotionMessageFlags locoFieldFlags = LocomotionState.GetFieldFlags(locomotionState, null, true);
+            ref LocomotionState locomotionState = ref LocomotionState.Null;
+            if (worldEntity.Locomotor != null)
+                locomotionState = ref worldEntity.Locomotor.LocomotionState;
+
+            LocomotionMessageFlags locoFieldFlags = LocomotionState.GetFieldFlags(ref locomotionState, ref LocomotionState.Null, true);
             if (locoFieldFlags.HasFlag(LocomotionMessageFlags.NoLocomotionState) == false)
             {
                 NetStructLocomotionState.Builder locomotionStateBuilder = NetStructLocomotionState.CreateBuilder();
-                LocomotionState.SerializeTo(locomotionStateBuilder, locomotionState, locoFieldFlags);
+                LocomotionState.SerializeTo(locomotionStateBuilder, ref locomotionState, locoFieldFlags);
                 builder.SetLocomotionState(locomotionStateBuilder.Build());
             }
 

@@ -14,6 +14,7 @@ using MHServerEmu.Games.Entities.Locomotion;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.MTXStore;
+using MHServerEmu.Games.Navi;
 using MHServerEmu.Games.Regions;
 
 namespace MHServerEmu.Games.Network
@@ -348,14 +349,14 @@ namespace MHServerEmu.Games.Network
             // Update locomotion state
             if (updateAvatarState.HasLocomotionstate && avatar.Locomotor != null)
             {
-                // Make a copy of the last sync state and update it with new data
-                using LocomotionState newSyncState = ObjectPoolManager.Instance.Get<LocomotionState>();
-                newSyncState.Set(avatar.Locomotor.LastSyncState);
+                using var pathNodesHandle = ListPool<NaviPathNode>.Instance.Get(out List<NaviPathNode> pathNodes);
+                LocomotionState newSyncState = new(pathNodes);
+                newSyncState.Set(ref avatar.Locomotor.LastSyncState);
 
                 // V10_NOTE: Because this is just a protobuf instead of archive in 1.10, we don't need to be as careful with transferring state here
-                LocomotionState.SerializeFrom(updateAvatarState.Locomotionstate, newSyncState);
+                LocomotionState.SerializeFrom(updateAvatarState.Locomotionstate, ref newSyncState);
 
-                avatar.Locomotor.SetSyncState(newSyncState, position, orientation);
+                avatar.Locomotor.SetSyncState(ref newSyncState, position, orientation);
             }
 
             // optional bool isTeleport - what do we do with this?
