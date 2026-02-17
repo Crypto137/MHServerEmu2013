@@ -48,6 +48,8 @@ namespace MHServerEmu.Games.Entities
         private RegionLocation _regionLocation;
         private RegionLocationSafe _exitWorldRegionLocation;
 
+        private Bounds _bounds = new();
+
         public ref RegionLocation RegionLocation { get => ref _regionLocation; }
         public bool IsInWorld { get => _regionLocation.IsValid; }
         public Region Region { get => _regionLocation.Region; }
@@ -60,11 +62,11 @@ namespace MHServerEmu.Games.Entities
         public ConditionCollection ConditionCollection { get; private set; }
         public EntityRegionSpatialPartitionLocation SpatialPartitionLocation { get; }
         public Aabb RegionBounds { get; set; }
-        public Bounds Bounds { get; set; } = new();
+        public ref Bounds Bounds { get => ref _bounds; }
         public WorldEntityPrototype WorldEntityPrototype { get => Prototype as WorldEntityPrototype; }
         public bool ShouldSnapToFloorOnSpawn { get; private set; }
         public Locomotor Locomotor { get; protected set; }
-        public virtual Bounds EntityCollideBounds { get => Bounds; set { } }
+        public virtual ref Bounds EntityCollideBounds { get => ref _bounds; }
         public bool IsAliveInWorld { get => IsInWorld && IsDead == false; }
         public virtual bool IsMovementAuthoritative { get => true; }
 
@@ -93,9 +95,9 @@ namespace MHServerEmu.Games.Entities
 
             if (worldEntityProto.Bounds != null)
             {
-                Bounds.InitializeFromPrototype(worldEntityProto.Bounds);
+                _bounds.InitializeFromPrototype(worldEntityProto.Bounds);
                 if (settings.BoundsScaleOverride != 1f)
-                    Bounds.Scale(settings.BoundsScaleOverride);
+                    _bounds.Scale(settings.BoundsScaleOverride);
             }
 
             ConditionCollection = new(this);
@@ -182,8 +184,8 @@ namespace MHServerEmu.Games.Entities
                         this, result, _regionLocation.ToString(), position));
                 }
 
-                if (Bounds.Geometry != GeometryType.None)
-                    Bounds.Center = position.Value;
+                if (_bounds.Geometry != GeometryType.None)
+                    _bounds.Center = position.Value;
 
                 /* V10_TODO
                 if (flags.HasFlag(ChangePositionFlags.PhysicsResolve) == false)
@@ -197,8 +199,8 @@ namespace MHServerEmu.Games.Entities
             {
                 _regionLocation.SetOrientation(orientation.Value);
 
-                if (Bounds.Geometry != GeometryType.None)
-                    Bounds.Orientation = orientation.Value;
+                if (_bounds.Geometry != GeometryType.None)
+                    _bounds.Orientation = orientation.Value;
                 /* V10_TODO
                 if (Physics.HasAttachedEntities())
                     RegisterForPendingPhysicsResolve();
@@ -255,13 +257,13 @@ namespace MHServerEmu.Games.Entities
         public Vector3 FloorToCenter(Vector3 position)
         {
             Vector3 resultPosition = position;
-            if (Bounds.Geometry != GeometryType.None)
-                resultPosition.Z += Bounds.HalfHeight;
+            if (_bounds.Geometry != GeometryType.None)
+                resultPosition.Z += _bounds.HalfHeight;
             // TODO Locomotor.GetCurrentFlyingHeight
             return resultPosition;
         }
 
-        public bool ShouldUseSpatialPartitioning() => Bounds.Geometry != GeometryType.None;
+        public bool ShouldUseSpatialPartitioning() => _bounds.Geometry != GeometryType.None;
 
         public EntityRegionSPContext GetEntityRegionSPContext()
         {
@@ -281,9 +283,14 @@ namespace MHServerEmu.Games.Entities
 
         public void UpdateRegionBounds()
         {
-            RegionBounds = Bounds.ToAabb();
+            RegionBounds = _bounds.ToAabb();
             if (ShouldUseSpatialPartitioning())
                 Region.UpdateEntityInSpatialPartition(this);
+        }
+
+        public virtual void SetEntityCollideBounds(ref Bounds bounds)
+        {
+            // Only Missile entities have separate collide bounds. Everything else uses normal bounds, and overriding is not possible.
         }
 
         public virtual bool EnterWorld(Region region, Vector3 position, Orientation orientation, EntitySettings settings = null)
