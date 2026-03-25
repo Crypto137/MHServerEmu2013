@@ -1,4 +1,5 @@
-﻿using MHServerEmu.Core.Logging;
+﻿using MHServerEmu.Core.Collections;
+using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Serialization;
 using MHServerEmu.Core.System;
 using MHServerEmu.Games.Common;
@@ -21,16 +22,16 @@ namespace MHServerEmu.Games.Entities
     {
         Simulated = 0,
         Locomotion = 1,
-        All = 3,
+        All = 2,    // unused?
     }
 
-    /* V10_TODO
     public class EntityInvasiveCollection : InvasiveList<Entity>
     {
         public EntityInvasiveCollection(EntityCollection collectionType, int maxIterators = 8) : base(maxIterators, (int)collectionType) { }
-        public override InvasiveListNode<Entity> GetInvasiveListNode(Entity element, int listId) => element.GetInvasiveListNode(listId);
+        public override ref InvasiveListNode<Entity> GetInvasiveListNode(Entity element, int listId) => ref element.GetInvasiveListNode(listId);
     }
 
+    /* V10_TODO
     public readonly struct DestroyEntityEvent(Entity entity) : IGameEventData
     {
         public readonly Entity Entity = entity;
@@ -68,10 +69,11 @@ namespace MHServerEmu.Games.Entities
 
         /* V10_TODO
         public PhysicsManager PhysicsManager { get; set; }
+        */
+
         public EntityInvasiveCollection AllEntities { get; private set; }
         public EntityInvasiveCollection SimulatedEntities { get; private set; }
         public EntityInvasiveCollection LocomotionEntities { get; private set; }
-        */
 
         public bool IsAIEnabled { get; private set; } = true;
 
@@ -80,10 +82,10 @@ namespace MHServerEmu.Games.Entities
             _game = game;
             /* V10_TODO
             PhysicsManager = new();
+            */
             AllEntities = new(EntityCollection.All);
             SimulatedEntities = new(EntityCollection.Simulated);
             LocomotionEntities = new(EntityCollection.Locomotion);
-            */
         }
 
         public bool Initialize()
@@ -142,7 +144,7 @@ namespace MHServerEmu.Games.Entities
 
             entity = _game.AllocateEntity(settings.EntityRef);
 
-            //entity.ModifyCollectionMembership(EntityCollection.All, true); V10_TODO
+            entity.ModifyCollectionMembership(EntityCollection.All, true);
 
             _entityDict.Add(settings.Id, entity);
             if (settings.DbGuid != 0)
@@ -459,7 +461,7 @@ namespace MHServerEmu.Games.Entities
         public void LocomoteEntities()
         {
             /* V10_TODO
-            foreach (var entity in LocomotionEntities.Iterate())
+            foreach (var entity in LocomotionEntities)
                 if (entity is WorldEntity worldEntity)
                     worldEntity?.Locomotor.Locomote();
             */
@@ -600,7 +602,7 @@ namespace MHServerEmu.Games.Entities
 
             /* V10_TODO
             if (enable)
-                foreach (var entity in SimulatedEntities.Iterate())
+                foreach (var entity in SimulatedEntities)
                     if (entity is Agent agent) agent.AIController?.SetIsEnabled(true);
 
             foreach (var entity in _entityDict.Values)

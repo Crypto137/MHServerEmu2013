@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using MHServerEmu.Core.Collections;
 using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Memory;
@@ -92,6 +93,9 @@ namespace MHServerEmu.Games.Entities
         public const ulong InvalidId = 0;
 
         private static readonly Logger Logger = LogManager.CreateLogger();
+
+        // V10_NOTE: There should be 2 invasive lists for entities instead of 3 in 1.10, not sure if we need to match the client here.
+        private InlineArray3<InvasiveListNode<Entity>> _entityListNodes;
 
         private readonly EventGroup _pendingEvents = new();
 
@@ -614,6 +618,75 @@ namespace MHServerEmu.Games.Entities
         {
             // lootTableRef seems to be unused
             return InventoryCollection.CreateAndAddInventory(invProtoRef);
+        }
+
+        #endregion
+
+        #region Invasive List Implementation
+
+        public bool ModifyCollectionMembership(EntityCollection collection, bool add)
+        {
+            if (collection == EntityCollection.All) return true;
+            var list = GetInvasiveCollection(collection);
+            if (list == null) return Logger.WarnReturn(false, "ModifyCollectionMembership(): list == null");
+
+            bool isInCollection = IsInCollection(collection);
+            if (add && isInCollection == false)
+            {
+                if (collection == EntityCollection.Simulated || collection == EntityCollection.Locomotion)
+                {
+                    if (TestStatus(EntityStatus.Destroyed))
+                        return Logger.WarnReturn(false, $"ModifyCollectionMembership(): Trying to add destroyed entity {ToString()} to collection {collection}");
+
+                    if (IsInGame == false)
+                        return Logger.WarnReturn(false, $"ModifyCollectionMembership(): Trying to add out of game entity {ToString()} to collection {collection}");
+
+                    if (this is WorldEntity worldEntity && worldEntity.IsInWorld == false)
+                        return Logger.WarnReturn(false, $"ModifyCollectionMembership(): Trying to add out of world entity {ToString()} to collection {collection}");
+                }
+
+                if (collection == EntityCollection.Simulated) SetFlag(EntityFlags.IsSimulated, true);
+                list.AddBack(this);
+            }
+            else if (add == false && isInCollection)
+            {
+                list.Remove(this);
+                if (collection == EntityCollection.Simulated) SetFlag(EntityFlags.IsSimulated, false);
+            }
+
+            return true;
+        }
+
+        private bool IsInCollection(EntityCollection collection)
+        {
+            var list = GetInvasiveCollection(collection);
+            if (list != null) return list.Contains(this);
+            return false;
+        }
+
+        public InvasiveList<Entity> GetInvasiveCollection(EntityCollection collection)
+        {
+            EntityManager entityManager = Game?.EntityManager;
+            if (entityManager == null) return null;
+
+            return collection switch
+            {
+                EntityCollection.Simulated => entityManager.SimulatedEntities,
+                EntityCollection.Locomotion => entityManager.LocomotionEntities,
+                EntityCollection.All => entityManager.AllEntities,
+                _ => null,
+            };
+        }
+
+        public ref InvasiveListNode<Entity> GetInvasiveListNode(int listId)
+        {
+            // InvasiveListNodeCollection is inlined into this function because of CS8170.
+            const int NumLists = 3;
+
+            if (listId >= 0 && listId < NumLists)
+                return ref _entityListNodes[listId];
+            else
+                return ref Unsafe.NullRef<InvasiveListNode<Entity>>();
         }
 
         #endregion

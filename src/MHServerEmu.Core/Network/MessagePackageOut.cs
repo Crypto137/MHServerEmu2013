@@ -1,4 +1,5 @@
 ﻿using Google.ProtocolBuffers;
+using MHServerEmu.Core.Serialization;
 using MHServerEmu.Core.System.Time;
 
 namespace MHServerEmu.Core.Network
@@ -59,6 +60,20 @@ namespace MHServerEmu.Core.Network
             if (_timestamp != 0)
                 stream.WriteRawVarint64(CodedOutputStream.EncodeZigZag64(_timestamp));
             
+            Message.WriteTo(stream);
+        }
+
+        /// <summary>
+        /// Writes this <see cref="MessagePackageOut"/> to the provided <see cref="ICodedOutputStreamEx"/>.
+        /// </summary>
+        public void WriteTo(ICodedOutputStreamEx stream)
+        {
+            stream.WriteRawVarint32(Id);
+            stream.WriteRawVarint32((uint)_messageSize);
+
+            if (_timestamp != 0)
+                stream.WriteRawVarint64(CodedOutputStream.EncodeZigZag64(_timestamp));
+
             Message.WriteTo(stream);
         }
     }
