@@ -21,8 +21,8 @@ namespace MHServerEmu.Games.Entities
     public enum EntityCollection
     {
         Simulated = 0,
-        Locomotion = 1,
-        All = 2,    // unused?
+        Locomotion = 1,     // V10_NOTE: This didn't exist in 1.10, see LocomoteEntities() for details.
+        All = 2,            // unused?
     }
 
     public class EntityInvasiveCollection : InvasiveList<Entity>
@@ -460,6 +460,10 @@ namespace MHServerEmu.Games.Entities
 
         public void LocomoteEntities()
         {
+            // V10_NOTE: In the 1.10 client all simulated entities are iterated here.
+            // In a later version a dedicated locomotion invasive list was added
+            // that includes only the simulated entities that have locomotors.
+            // We can keep this optimization from later versions as is server-side.
             /* V10_TODO
             foreach (var entity in LocomotionEntities)
                 if (entity is WorldEntity worldEntity)

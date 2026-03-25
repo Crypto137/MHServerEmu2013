@@ -94,7 +94,6 @@ namespace MHServerEmu.Games.Entities
 
         private static readonly Logger Logger = LogManager.CreateLogger();
 
-        // V10_NOTE: There should be 2 invasive lists for entities instead of 3 in 1.10, not sure if we need to match the client here.
         private InlineArray3<InvasiveListNode<Entity>> _entityListNodes;
 
         private readonly EventGroup _pendingEvents = new();
