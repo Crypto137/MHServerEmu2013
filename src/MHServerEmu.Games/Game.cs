@@ -4,6 +4,7 @@ using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Network;
 using MHServerEmu.Core.System.Random;
 using MHServerEmu.Core.System.Time;
+using MHServerEmu.Games.Common;
 using MHServerEmu.Games.Entities;
 using MHServerEmu.Games.Entities.Avatars;
 using MHServerEmu.Games.Entities.Items;
@@ -12,7 +13,6 @@ using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.GameData.Prototypes.MetaGame;
 using MHServerEmu.Games.MetaGames;
-using MHServerEmu.Games.MTXStore;
 using MHServerEmu.Games.Network;
 using MHServerEmu.Games.Regions;
 
@@ -66,14 +66,19 @@ namespace MHServerEmu.Games
         public GRandom Random { get; } = new();
         public PlayerConnectionManager NetworkManager { get; }
         public EventScheduler GameEventScheduler { get; private set; }
-        public RegionManager RegionManager { get; }
         public EntityManager EntityManager { get; }
+        public RegionManager RegionManager { get; }
+        public AdminCommandManager AdminCommandManager { get; }
 
         public TimeSpan FixedTimeBetweenUpdates { get; } = TimeSpan.FromMilliseconds(1000f / TargetFrameRate);
         public TimeSpan RealGameTime { get => (TimeSpan)_realGameTime; }
         public TimeSpan CurrentTime { get => GameEventScheduler != null ? GameEventScheduler.CurrentTime : _currentGameTime; }
         public TimeSpan NextUpdateTime { get; private set; } = Clock.GameTime;
         public ulong NumQuantumFixedTimeUpdates { get => (ulong)CurrentTime.CalcNumTimeQuantums(FixedTimeBetweenUpdates); }
+
+        public TimeSpan LastProcessingTime { get; set; } = TimeSpan.Zero;
+        public TimeSpan LastFrameTime { get; set; } = TimeSpan.FromMilliseconds(1000f / TargetFrameRate);
+        public TimeSpan LastUpdateEndTime { get; set; } = Clock.GameTime;
 
         public ulong CurrentRepId { get => ++_currentRepId; }
         public Dictionary<ulong, IArchiveMessageHandler> MessageHandlerDict { get; } = new();
@@ -88,6 +93,7 @@ namespace MHServerEmu.Games
             // The game uses 16 bits of the current UTC time in seconds as the initial replication id
             _currentRepId = (ulong)(DateTime.UtcNow.Ticks / TimeSpan.TicksPerSecond) & 0xFFFF;
 
+            AdminCommandManager = new(this);
             NetworkManager = new(this);
             RegionManager = new(this);
             EntityManager = new(this);

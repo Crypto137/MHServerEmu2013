@@ -239,6 +239,13 @@ namespace MHServerEmu.Games.Entities
             }
         }
 
+        public bool TrashItem(Item item)
+        {
+            // V10_TODO: Dropping items
+            item.Destroy();
+            return true;
+        }
+
         protected override bool InitInventories(bool populateInventories)
         {
             bool success = base.InitInventories(populateInventories);
@@ -270,14 +277,36 @@ namespace MHServerEmu.Games.Entities
             return success;
         }
 
-        public bool TrashItem(Item item)
+        #endregion
+
+        #region Badges
+
+        /// <summary>
+        /// Add the specified badge to this <see cref="Player"/>. Returns <see langword="true"/> if successful.
+        /// </summary>
+        public bool AddBadge(AvailableBadges badge)
         {
-            // V10_TODO: Dropping items
-            item.Destroy();
-            return true;
+            return _badges.SortedInsert(badge);
+        }
+
+        /// <summary>
+        /// Removes the specified badge from this <see cref="Player"/>. Returns <see langword="true"/> if successful.
+        /// </summary>
+        public bool RemoveBadge(AvailableBadges badge)
+        {
+            return _badges.Remove(badge);
+        }
+
+        /// <summary>
+        /// Returns <see langword="true"/> if this <see cref="Player"/> has the specified badge.
+        /// </summary>
+        public bool HasBadge(AvailableBadges badge)
+        {
+            return _badges.Contains(badge);
         }
 
         #endregion
+
 
         #region Avatar Management
 

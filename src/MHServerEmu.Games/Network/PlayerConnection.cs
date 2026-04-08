@@ -379,7 +379,7 @@ namespace MHServerEmu.Games.Network
             var adminCommand = message.As<NetMessageAdminCommand>();
             if (adminCommand == null) return Logger.WarnReturn(false, "OnAdminCommand(): Failed to retrieve message");
 
-            Logger.Debug($"NetMessageAdminCommand: {adminCommand.Command}");
+            Game.AdminCommandManager.OnAdminCommand(Player, adminCommand);
 
             return true;
         }
