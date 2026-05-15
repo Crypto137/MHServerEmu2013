@@ -79,8 +79,6 @@ namespace MHServerEmu.Games.Entities
 
     public struct Bounds
     {
-        public static readonly Logger Logger = LogManager.CreateLogger();
-
         public GeometryType Geometry { get; private set; }
         public BoundsCollisionType CollisionType { get; set; }
         public Vector3 Center { get; set; }
@@ -124,7 +122,7 @@ namespace MHServerEmu.Games.Entities
         {
             if (boundsProto == null)
             {
-                Logger.Warn("Anything trying to initialize Bounds should have a valid bounds prototype!");
+                Verify.IsTrue(false, "Anything trying to initialize Bounds should have a valid bounds prototype!");
                 Geometry = GeometryType.None;
                 CollisionType = BoundsCollisionType.None;
                 return;
@@ -295,7 +293,7 @@ namespace MHServerEmu.Games.Entities
                     break;
 
                 default:
-                    Logger.Error($"Can't set the radius of a {Geometry}.");
+                    Verify.IsTrue(false, $"Can't set the radius of a {Geometry}.");
                     break;
             }
         }
@@ -446,7 +444,7 @@ namespace MHServerEmu.Games.Entities
                 case GeometryType.Triangle:
                     return ToTriangle2D().Intersects(point);
                 default:
-                    Logger.Warn($"Unknown bounds geometry. Geometry={Geometry}");
+                    Verify.IsTrue(false, $"Unknown bounds geometry. Geometry={Geometry}");
                     return false;
             }
         }
@@ -466,7 +464,7 @@ namespace MHServerEmu.Games.Entities
                 case GeometryType.Triangle:
                     return Intersects(other.ToTriangle2D());
                 default:
-                    Logger.Warn($"Unknown bounds geometry. Geometry={Geometry}, other.Geometry={other.Geometry}");
+                    Verify.IsTrue(false, $"Unknown bounds geometry. Geometry={Geometry}, other.Geometry={other.Geometry}");
                     return false;
             }
         }
@@ -482,7 +480,7 @@ namespace MHServerEmu.Games.Entities
                 case GeometryType.Sphere: return ToSphere().Intersects(bounds);
                 case GeometryType.Triangle: return ToTriangle2D().Intersects(bounds);
                 default:
-                    Logger.Warn($"Unknown bounds geometry. Geometry={Geometry}");
+                    Verify.IsTrue(false, $"Unknown bounds geometry. Geometry={Geometry}");
                     return false;
             }
         }
@@ -497,7 +495,7 @@ namespace MHServerEmu.Games.Entities
                 case GeometryType.Sphere: return ToSphere().Intersects(bounds);
                 case GeometryType.Triangle: return ToTriangle2D().Intersects(bounds);
                 default:
-                    Logger.Warn($"Unknown bounds geometry. Geometry={Geometry}");
+                    Verify.IsTrue(false, $"Unknown bounds geometry. Geometry={Geometry}");
                     return false;
             }
         }
@@ -512,7 +510,7 @@ namespace MHServerEmu.Games.Entities
                 case GeometryType.Sphere: return ToSphere().Intersects(bounds);
                 case GeometryType.Triangle: return ToTriangle2D().Intersects(bounds);
                 default:
-                    Logger.Warn($"Unknown bounds geometry. Geometry={Geometry}");
+                    Verify.IsTrue(false, $"Unknown bounds geometry. Geometry={Geometry}");
                     return false;
             }
         }
@@ -527,7 +525,7 @@ namespace MHServerEmu.Games.Entities
                 case GeometryType.Sphere: return ToSphere().Intersects(bounds);
                 case GeometryType.Triangle: return ToTriangle2D().Intersects(bounds);
                 default:
-                    Logger.Warn($"Unknown bounds geometry. Geometry={Geometry}");
+                    Verify.IsTrue(false, $"Unknown bounds geometry. Geometry={Geometry}");
                     return false;
             }
         }
@@ -542,7 +540,7 @@ namespace MHServerEmu.Games.Entities
                 case GeometryType.Sphere: return ToSphere().Intersects(bounds);
                 case GeometryType.Triangle: return ToTriangle2D().Intersects(bounds);
                 default:
-                    Logger.Warn($"Unknown bounds geometry. Geometry={Geometry}");
+                    Verify.IsTrue(false, $"Unknown bounds geometry. Geometry={Geometry}");
                     return false;
             }
         }
@@ -555,7 +553,9 @@ namespace MHServerEmu.Games.Entities
                 case GeometryType.AABB: return ToAabb().Intersects(segment, ref intersection);
                 case GeometryType.Capsule: return ToCapsule().Intersects(segment, ref intersection);
                 case GeometryType.Sphere: return ToSphere().Intersects(segment, ref intersection);
-                default: return Logger.WarnReturn(false, $"Segment intersect not implemented for bounds geometry={Geometry}"); ;
+                default:
+                    Verify.IsTrue(false, $"Segment intersect not implemented for bounds geometry={Geometry}");
+                    return false;
             }
         }
 
@@ -703,7 +703,7 @@ namespace MHServerEmu.Games.Entities
                     }
                 default:
                     {
-                        Logger.Warn($"SweepVsStationaryAABB: Unsupported bounds geometry type: {bounds.Geometry}");
+                        Verify.IsTrue(false, $"SweepVsStationaryAABB: Unsupported bounds geometry type: {bounds.Geometry}.");
                         return false;
                     }
             }
@@ -744,7 +744,7 @@ namespace MHServerEmu.Games.Entities
                         return sphere.Sweep(aabb, oobVelocity, ref resultTime);
                     }
                 default:
-                    Logger.Warn($"SweepVsStationaryOBB: Unsupported bounds geometry type: {bounds.Geometry}");
+                    Verify.IsTrue(false, $"SweepVsStationaryOBB: Unsupported bounds geometry type: {bounds.Geometry}.");
                     return false;
             }
         }

@@ -14,8 +14,6 @@ namespace MHServerEmu.Games.Entities
 {
     public class Transition : WorldEntity
     {
-        private static readonly Logger Logger = LogManager.CreateLogger();
-
         private RepVar_string _name = new();
         private RepVar_PrototypeDataRef _regionRef = new();    
         private RepVar_PrototypeDataRef _areaRef = new();
@@ -139,7 +137,7 @@ namespace MHServerEmu.Games.Entities
                 case RegionTransitionType.Transition:
                 case RegionTransitionType.TransitionDirect:
                     Region region = player.GetRegion();
-                    if (region == null) return Logger.WarnReturn(false, "UseTransition(): region == null");
+                    if (!Verify.IsNotNull(region)) return false;
 
                     PrototypeId targetRegionProtoRef = _regionRef.Get();
 
@@ -164,7 +162,8 @@ namespace MHServerEmu.Games.Entities
                     return TeleportToRemoteTarget(player, _targetRef);
 
                 default:
-                    return Logger.WarnReturn(false, $"UseTransition(): Unimplemented region transition type {TransitionPrototype.Type}");
+                    Verify.IsTrue(false, $"Unimplemented region transition type {TransitionPrototype.Type}");
+                    return false;
             }
         }
 
@@ -178,19 +177,18 @@ namespace MHServerEmu.Games.Entities
         public static bool TeleportToLocalTarget(Player player, PrototypeId targetProtoRef)
         {
             var targetProto = targetProtoRef.As<RegionConnectionTargetPrototype>();
-            if (targetProto == null) return Logger.WarnReturn(false, "TeleportToLocalTarget(): targetProto == null");
+            if (!Verify.IsNotNull(targetProto)) return false;
 
             Region region = player.GetRegion();
-            if (region == null) return Logger.WarnReturn(false, "TeleportToLocalTarget(): region == null");
+            if (!Verify.IsNotNull(region)) return false;
 
             Vector3 position = Vector3.Zero;
             Orientation orientation = Orientation.Zero;
 
-            if (region.FindTargetLocation(ref position, ref orientation,
-                targetProto.Area, GameDatabase.GetDataRefByAsset(targetProto.Cell), targetProto.Entity) == false)
-            {
-                return Logger.WarnReturn(false, $"TeleportToLocalTarget(): Failed to find target location for target {targetProtoRef.GetName()}");
-            }
+            if (!Verify.IsTrue(region.FindTargetLocation(ref position, ref orientation,
+                targetProto.Area, GameDatabase.GetDataRefByAsset(targetProto.Cell), targetProto.Entity),
+                $"Failed to find target location for target {targetProtoRef.GetName()}"))
+                return false;
 
             // V10_NOTE: No NetMessageOneTimeSnapCamera in 1.10?
 
@@ -203,10 +201,10 @@ namespace MHServerEmu.Games.Entities
             // This looks quite similar to TeleportToLocalTarget(), maybe we should merge them
 
             Transition transition = player.Game.EntityManager.GetEntity<Transition>(transitionEntityId);
-            if (transition == null) return Logger.WarnReturn(false, "TeleportToTransition(): transition == null");
+            if (!Verify.IsNotNull(transition)) return false;
 
             TransitionPrototype transitionProto = transition.TransitionPrototype;
-            if (transitionProto == null) return Logger.WarnReturn(false, "TeleportToTransition(): transitionProto == null");
+            if (!Verify.IsNotNull(transitionProto)) return false;
 
             Vector3 targetPos = transition.RegionLocation.Position;
             Orientation targetRot = transition.RegionLocation.Orientation;

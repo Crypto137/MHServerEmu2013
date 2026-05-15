@@ -1,9 +1,12 @@
 ﻿using MHServerEmu.Core.Collections;
+using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Serialization;
 using MHServerEmu.Core.System;
+using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.Common;
 using MHServerEmu.Games.Entities.Inventories;
+using MHServerEmu.Games.Entities.Locomotion;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Regions;
@@ -47,8 +50,8 @@ namespace MHServerEmu.Games.Entities
 
         private readonly Game _game;
 
-        private readonly Dictionary<ulong, Entity> _entityDict = new();
-        private readonly Dictionary<ulong, Entity> _entityDbGuidDict = new();
+        private readonly Dictionary<ulong, Entity> _entityMap = new();
+        private readonly Dictionary<ulong, Entity> _entityDbGuidMap = new();
         private readonly HashSet<ulong> _entitiesPendingCondemnedPowerDeletion = new();
 
         private readonly LinkedList<ulong> _entitiesPendingDestruction = new();
@@ -58,7 +61,7 @@ namespace MHServerEmu.Games.Entities
         private ulong _nextEntityId = 1;
         private ulong GetNextEntityId() { return _nextEntityId++; }
 
-        public int EntityCount { get => _entityDict.Count; }
+        public int EntityCount { get => _entityMap.Count; }
         public int PlayerCount { get => Players.Count; }
 
         public bool IsDestroyingAllEntities { get; private set; } = false;
@@ -67,25 +70,21 @@ namespace MHServerEmu.Games.Entities
         // As an alternative, we could also move PlayerIterator to EntityManager as a nested struct.
         public HashSet<Player> Players { get; } = new();
 
-        /* V10_TODO
-        public PhysicsManager PhysicsManager { get; set; }
-        */
-
-        public EntityInvasiveCollection AllEntities { get; private set; }
-        public EntityInvasiveCollection SimulatedEntities { get; private set; }
-        public EntityInvasiveCollection LocomotionEntities { get; private set; }
+        // public PhysicsManager PhysicsManager { get; set; } = new(); V10_TODO
+        public EntityInvasiveCollection AllEntities { get; private set; } = new(EntityCollection.All);
+        public EntityInvasiveCollection SimulatedEntities { get; private set; } = new(EntityCollection.Simulated);
+        public EntityInvasiveCollection LocomotionEntities { get; private set; } = new(EntityCollection.Locomotion);
 
         public bool IsAIEnabled { get; private set; } = true;
 
         public EntityManager(Game game)
         {            
             _game = game;
-            /* V10_TODO
-            PhysicsManager = new();
-            */
-            AllEntities = new(EntityCollection.All);
-            SimulatedEntities = new(EntityCollection.Simulated);
-            LocomotionEntities = new(EntityCollection.Locomotion);
+        }
+
+        public Dictionary<ulong, Entity>.ValueCollection.Enumerator GetEnumerator()
+        {
+            return _entityMap.Values.GetEnumerator();
         }
 
         public bool Initialize()
@@ -98,27 +97,22 @@ namespace MHServerEmu.Games.Entities
 
         public Entity CreateEntity(EntitySettings settings)
         {
-            if (IsDestroyingAllEntities) return null;   // Prevent new entities from being created during cleanup
+            // Prevent new entities from being created during cleanup
+            if (IsDestroyingAllEntities)
+                return null;
 
             // Pre-process settings
             PrototypeId entityProtoRef = settings.EntityRef;
-
-            if (entityProtoRef == PrototypeId.Invalid)
-                return Logger.WarnReturn<Entity>(null, "CreateEntity(): Invalid prototype ref provided in settings");
-
-            if (DataDirectory.Instance.PrototypeIsA<EntityPrototype>(entityProtoRef) == false)
-                return Logger.WarnReturn<Entity>(null, $"CreateEntity(): {entityProtoRef} is not a valid entity prototype ref");
+            if (!Verify.IsTrue(entityProtoRef != PrototypeId.Invalid)) return null;
 
             if (settings.Id == 0)
                 settings.Id = GetNextEntityId();
 
             if (settings.DbGuid == 0)
             {
-                if (DataDirectory.Instance.GetPrototypeClassType(entityProtoRef) == typeof(PlayerPrototype))
-                    return Logger.WarnReturn<Entity>(null, "CreateEntity(): Player entities require a valid database guid generated during account creation");
-
+                // Player entities require a valid database guid generated during account creation
+                if (!Verify.IsTrue(DataDirectory.Instance.GetPrototypeClassType(entityProtoRef) != typeof(PlayerPrototype))) return null;
                 settings.DbGuid = EntityDbGuidGenerator.Generate();
-                //Logger.Debug($"CreateEntity(): Generated database guid 0x{settings.DbGuid:X} for entity {entityProtoRef.GetName()}");
             }
 
             // Newly created entities are always new on server and not something that simply entered a client's AOI
@@ -134,79 +128,84 @@ namespace MHServerEmu.Games.Entities
 
             // Check for id collisions
             entity = GetEntity(settings.Id, GetEntityFlags.UnpackedOnly);
-            if (entity != null)
-                return Logger.WarnReturn<Entity>(null, $"CreateEntity(): Collision in entity id, existing entity found: {entity}");
+            if (!Verify.IsTrue(entity == null, $"Collision in entity id, existing entity found: {entity}!"))
+                return null;
 
             // Server entities should always have valid database guids, so we can omit the client-side check for invalid db guid here
             entity = GetEntityByDbGuid(settings.DbGuid, GetEntityFlags.UnpackedOnly);
-            if (entity != null)
-                return Logger.WarnReturn<Entity>(null, $"CreateEntity(): Collision in entity dbid, existing entity found: {entity}");
+            if (!Verify.IsTrue(entity == null, $"Collision in entity dbid, existing entity found: {entity}!"))
+                return null;
 
             entity = _game.AllocateEntity(settings.EntityRef);
+            if (!Verify.IsNotNull(entity, $"Unable to allocate new entity of type {entityProtoRef.GetName()}"))
+                return null;
 
             entity.ModifyCollectionMembership(EntityCollection.All, true);
 
-            _entityDict.Add(settings.Id, entity);
+            _entityMap.Add(settings.Id, entity);
             if (settings.DbGuid != 0)
-                _entityDbGuidDict[settings.DbGuid] = entity;
+                _entityDbGuidMap[settings.DbGuid] = entity;
 
             // Set status flags
 
-            // DBOps - database operations?
+            // Database operations - we currently don't use this
             if (settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.SuspendDBOpsWhileCreating))
                 entity.SetStatus(EntityStatus.DisableDBOps, true);
 
-            // Items seem to ignore binding checks during creation
+            // Items ignore binding checks during creation
             entity.SetStatus(EntityStatus.SkipItemBindingCheck, true);
 
             // Set for client-only entities (should be irrelevant for our purposes)
             if (settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.ClientOnly))
                 entity.SetStatus(EntityStatus.ClientOnly, true);
 
-            // Deserialization flag - currently unused until we implement persistent archives
+            // Deserialization flag
             if (settings.ArchiveData != null)
                 entity.SetStatus(EntityStatus.HasArchiveData, true);
 
-            // Set for avatars, seems to be used for interaction with UE3 (client only?)
+            // Set for avatars, seems to be used for UE3 integration (client only?)
             if (settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.DeferAdapterChanges))
                 entity.SetStatus(EntityStatus.DeferAdapterChanges, true);
 
-            bool initSuccess = entity.PreInitialize(settings);
-            initSuccess &= entity.Initialize(settings);
-            
+            // Now do initialization
+            if (!Verify.IsTrue(entity.PreInitialize(settings), $"Entity {entity} failed to pre-initialize"))
+                goto Error;
+
+            if (!Verify.IsTrue(entity.Initialize(settings), $"Entity {entity} failed to initialize"))
+                goto Error;
+
+            if (!Verify.IsTrue(entity.Id == settings.Id, $"Entity id not assigned as expected to {entity}"))
+                goto Error;
+
             // Deserialize archive data if provided
-            if (settings.ArchiveSerializeType != ArchiveSerializeType.Invalid && settings.ArchiveData?.Length > 0)
+            if (settings.ArchiveSerializeType != ArchiveSerializeType.Invalid && settings.ArchiveData.HasValue())
             {
-                using (Archive archive = new(settings.ArchiveSerializeType, settings.ArchiveData))
-                {
-                    Serializer.Transfer(archive, ref entity);
-                    // TODO: entity.Bind() - do we need this server-side?
-                    entity.OnUnpackComplete(archive);
-                }
+                using Archive archive = new(settings.ArchiveSerializeType, settings.ArchiveData);
+                Serializer.Transfer(archive, ref entity);
+                // TODO: entity.Bind() - do we need this server-side?
+                entity.OnUnpackComplete(archive);
             }
 
-            entity.ApplyInitialReplicationState(ref settings);
+            if (!Verify.IsTrue(entity.ApplyInitialReplicationState(ref settings), $"Error applying initial replication state to entity %s"))
+                goto Error;
 
-            // Finish deserialization
+            // Player name check happens here client-side (it simply jumps to error despite what the error message says)
+            // Invalid player name during initialize for %s, assigning system generated name
+
             entity.SetStatus(EntityStatus.HasArchiveData, false);
 
-            // TODO: entity.AdjustDifficulty()
+            DebugGlobalsPrototype debugGlobalsProto = GameDatabase.DebugGlobalsPrototype;
+            if (!Verify.IsNotNull(debugGlobalsProto))
+                entity.AdjustDifficulty(debugGlobalsProto);
 
-            initSuccess &= FinalizeEntity(entity, settings);
-
-            if (initSuccess == false)
-            {
-                // Entity initialization failed
-                Logger.Warn($"CreateEntity(): Initialization failed for entity [{entity}]");
-                entity.Destroy();
-                return null;
-            }
+            // FinalizeEntity() fails silently, same as the client
+            if (FinalizeEntity(entity, settings) == false)
+                goto Error;
 
             // Resume DB ops
             if (settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.SuspendDBOpsWhileCreating))
             {
-                if (entity.TestStatus(EntityStatus.DisableDBOps) == false)
-                    Logger.Warn($"CreateEntity(): Expected status set to disable db ops on {entity}");
+                Verify.IsTrue(entity.TestStatus(EntityStatus.DisableDBOps), $"Expected status set to disable db ops on {entity}");
                 entity.SetStatus(EntityStatus.DisableDBOps, false);
             }
 
@@ -215,11 +214,16 @@ namespace MHServerEmu.Games.Entities
 
             settings.Results.Entity = entity;
             return entity;
+
+        Error:
+            if (Verify.IsNotNull(entity))
+                entity.Destroy();
+            return null;
         }
 
         private bool FinalizeEntity(Entity entity, EntitySettings settings)
         {
-            if (entity == null) return Logger.WarnReturn(false, "FinalizeEntity(): entity == null");
+            if (!Verify.IsNotNull(entity)) return false;
 
             entity.OnPostInit(settings);
 
@@ -233,16 +237,16 @@ namespace MHServerEmu.Games.Entities
                 settings.Results.InventoryResult = InventoryResult.UnknownFailure;
 
                 // Validate inventory location
-                if (ownerInventoryRef == PrototypeId.Invalid)
-                    return Logger.WarnReturn(false, $"FinalizeEntity(): Invalid owner invRef during create. invLoc={invLoc}, entity={entity}");
+                if (!Verify.IsTrue(ownerInventoryRef != PrototypeId.Invalid, $"Invalid owner invRef during create. invLoc={invLoc}, entity={entity}"))
+                    return false;
 
                 Entity owner = GetEntity<Entity>(settings.InventoryLocation.ContainerId);
-                if (owner == null)
-                    return Logger.WarnReturn(false, $"FinalizeEntity(): Unable to find owner entity with id {ownerId} for placement of entity {entity} into invLoc {invLoc}, maybe it despawned?");
+                if (!Verify.IsNotNull(owner, $"Unable to find owner entity with id {ownerId} for placement of entity {entity} into invLoc {invLoc}, maybe it despawned?"))
+                    return false;
 
                 Inventory ownerInventory = owner.GetInventoryByRef(ownerInventoryRef);
-                if (ownerInventory == null)
-                    return Logger.WarnReturn(false, $"FinalizeEntity(): Unable to find inventory {ownerInventory} in owner entity {owner} to put entity {entity} in it");
+                if (!Verify.IsNotNull(ownerInventory, $"Unable to find inventory {ownerInventory} in owner entity {owner} to put entity {entity} in it"))
+                    return false;
 
                 // Attempt to put the entity in the inventory it belongs to
                 InventoryLocation prevInvLoc = settings.InventoryLocationPrevious;
@@ -254,7 +258,7 @@ namespace MHServerEmu.Games.Entities
                 if (settings.Results.InventoryResult != InventoryResult.Success)
                 {
                     if (settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.LogInventoryErrors))
-                        Logger.Warn($"CreateEntity(): Unable to add entity {entity} at invLoc {invLoc} of owner entity {owner} (error: {settings.Results.InventoryResult})");
+                        Verify.IsTrue(false, $"Create entity inventory error: {settings.Results.InventoryResult}.  Unable to add entity {entity} at invLoc {invLoc} of owner entity {owner}");
 
                     return false;
                 }
@@ -265,7 +269,7 @@ namespace MHServerEmu.Games.Entities
 
             if (settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.EnterGame))
             {
-                var owner = entity.GetOwner();
+                Entity owner = entity.GetOwner();
                 if (owner == null || owner.IsInGame)
                     entity.EnterGame(settings);
             }
@@ -276,15 +280,20 @@ namespace MHServerEmu.Games.Entities
 
                 if (settings.RegionId != 0)
                 {
-                    Region region = _game.RegionManager.GetRegion(settings.RegionId);
-                    var position = settings.Position;
-                    /* V10_TODO
+                    RegionManager regionManager = _game.RegionManager;
+                    if (!Verify.IsNotNull(regionManager, $"No region manager when creating {entity}"))
+                        return false;
+
+                    Region region = regionManager.GetRegion(settings.RegionId);
+                    if (!Verify.IsNotNull(region, $"Invalid region 0x{settings.RegionId:X} when creating {entity}"))
+                        return false;
+
+                    Vector3 position = settings.Position;
                     if (worldEntity.ShouldSnapToFloorOnSpawn)
                     {
                         position = RegionLocation.ProjectToFloor(region, position);
                         position = worldEntity.FloorToCenter(position);
                     }
-                    */
 
                     // NOTE: While this is not client-accurate, if we don't clean up the entity here, it will stay in the message handler collection and cause a memory leak
                     if (worldEntity.EnterWorld(region, position, settings.Orientation, settings) == false)
@@ -295,22 +304,22 @@ namespace MHServerEmu.Games.Entities
             return true;
         }
 
-        public bool DestroyEntity(Entity entity)
+        public void DestroyEntity(Entity entity)
         {
-            if (entity == null) return Logger.WarnReturn(false, "DestroyEntity(): entity == null");
+            if (!Verify.IsNotNull(entity)) return;
 
-            if (entity.TestStatus(EntityStatus.PendingDestroy)) return Logger.WarnReturn(false,
-                $"DestroyEntity(): Entity already marked as PendingDestroy, this means that something was using an entity reference even though it was pending destroy which needs to be fixed! Entity: {entity}");
+            if (!Verify.IsTrue(entity.TestStatus(EntityStatus.PendingDestroy) == false,
+                $"Entity already marked as PendingDestroy, this means that something was using an entity reference even though it was pending destroy which needs to be fixed! Entity: [{entity}]"))
+                return;
 
-            if (entity.TestStatus(EntityStatus.Destroyed)) return Logger.WarnReturn(false,
-                $"DestroyEntity(): Entity already marked as Destroy, this means that something was using an entity reference even though it was destroyed which needs to be fixed! Entity: {entity}");
+            if (!Verify.IsTrue(entity.TestStatus(EntityStatus.Destroyed) == false,
+                $"Entity already marked as Destroy, this means that something was using an entity reference even though it was destroyed which needs to be fixed! Entity: [{entity}]"))
+                return;
 
             entity.SetStatus(EntityStatus.PendingDestroy, true);
 
-            /* V10_TODO
             // invoke destroyed event
-            DestroyEntityEvent.Invoke(new(entity));
-            */
+            // DestroyEntityEvent.Invoke(new(entity)); V10_TODO
 
             // Destroy entities belonging to this entity
             entity.DestroyContained();
@@ -324,16 +333,14 @@ namespace MHServerEmu.Games.Entities
             entity.SetStatus(EntityStatus.Destroyed, true);
 
             // Enqueue entity for deletion at the end of the frame
-            _entitiesPendingDestruction.AddLast(GetDestroyListNode(entity.Id));    
+            _entitiesPendingDestruction.AddLast(GetDestroyListNode(entity.Id));
 
             // Remove entity from the game
             entity.ExitGame();
 
             // Remove DbId lookup
             if (entity.DatabaseUniqueId != 0)
-                _entityDbGuidDict.Remove(entity.DatabaseUniqueId);
-
-            return true;
+                _entityDbGuidMap.Remove(entity.DatabaseUniqueId);
         }
 
         public void DestroyAllEntities()
@@ -346,7 +353,7 @@ namespace MHServerEmu.Games.Entities
             do
             {
                 removed = false;
-                foreach (Entity entity in _entityDict.Values)
+                foreach (Entity entity in this)
                 {
                     if (entity.TestStatus(EntityStatus.Destroyed))
                         continue;
@@ -359,14 +366,10 @@ namespace MHServerEmu.Games.Entities
                 }
             } while (removed && (loopGuard-- > 0));
 
-            if (loopGuard == 0)
+            if (!Verify.IsTrue(loopGuard != 0))
             {
-                Logger.Warn("DestroyAllEntities(): loopGuard == 0");
-                foreach (Entity entity in _entityDict.Values)
-                {
-                    if (entity.TestStatus(EntityStatus.Destroyed) == false)
-                        Logger.Warn($"DestroyAllEntities(): Entity is not 'Destroyed' after DestroyAllEntities() {entity}");
-                }
+                foreach (Entity entity in this)
+                    Verify.IsTrue(entity.TestStatus(EntityStatus.Destroyed), $"Entity is not 'Destroyed' after DestroyAllEntities() {entity}");
             }
 
             IsDestroyingAllEntities = false;
@@ -374,17 +377,17 @@ namespace MHServerEmu.Games.Entities
 
         public bool AddPlayer(Player player)
         {
-            if (player == null) return Logger.WarnReturn(false, "AddPlayer(): player == null");
+            if (!Verify.IsNotNull(player)) return false;
             bool playerAdded = Players.Add(player);
-            if (playerAdded == false) Logger.Warn($"AddPlayer(): Failed to add player {player}");
+            Verify.IsTrue(playerAdded);
             return playerAdded;
         }
 
         public bool RemovePlayer(Player player)
         {
-            if (player == null) return Logger.WarnReturn(false, "RemovePlayer(): player == null");
+            if (!Verify.IsNotNull(player)) return false;
             bool playerRemoved = Players.Remove(player);
-            if (playerRemoved == false) Logger.Warn($"RemovePlayer(): Failed to remove player {player}");
+            Verify.IsTrue(playerRemoved);
             return playerRemoved;
         }
 
@@ -395,16 +398,17 @@ namespace MHServerEmu.Games.Entities
 
         public T GetEntity<T>(ulong entityId, GetEntityFlags flags = GetEntityFlags.None) where T : Entity
         {
-            if (entityId == Entity.InvalidId) return null;
+            if (entityId == Entity.InvalidId)
+                return null;
 
             // Prevent destroyed entities from being accessed externally.
             return GetEntity(entityId, flags & ~GetEntityFlags.DestroyedOnly) as T;
         }
 
-        public T GetEntityByDbGuid<T>(ulong dbGuid, GetEntityFlags flags = GetEntityFlags.None) where T: Entity
+        public T GetEntityByDbGuid<T>(ulong dbGuid, GetEntityFlags flags = GetEntityFlags.None) where T : Entity
         {
-            // Same as above, but for DbGuid
-            if (dbGuid == 0) return Logger.WarnReturn<T>(null, "GetEntityByDbGuid(): dbGuid == 0");
+            if (dbGuid == 0)
+                return null;
 
             return GetEntityByDbGuid(dbGuid, flags & ~GetEntityFlags.DestroyedOnly) as T;
         }
@@ -426,29 +430,25 @@ namespace MHServerEmu.Games.Entities
             return false;
         }
 
-        public IEnumerable<Entity> IterateEntities()
-        {
-            foreach (var entity in _entityDict.Values)
-                yield return entity;
-        }
+        // TODO: fix these iterators
 
         public IEnumerable<Entity> IterateEntities(Area area)
         {
-            foreach (var entity in _entityDict.Values)
+            foreach (var entity in _entityMap.Values)
                 if (entity is WorldEntity worldEntity && worldEntity.Area == area)
                     yield return entity;
         }
 
         public IEnumerable<Entity> IterateEntities(Cell cell)
         {
-            foreach (var entity in _entityDict.Values)
+            foreach (var entity in _entityMap.Values)
                 if (entity is WorldEntity worldEntity && worldEntity.Cell == cell)
                     yield return entity;
         }
 
         public IEnumerable<Entity> IterateEntities(Region region)
         {
-            foreach (var entity in _entityDict.Values)
+            foreach (var entity in _entityMap.Values)
                 if (entity is WorldEntity worldEntity && worldEntity.Region == region)
                     yield return entity;
         }
@@ -464,11 +464,18 @@ namespace MHServerEmu.Games.Entities
             // In a later version a dedicated locomotion invasive list was added
             // that includes only the simulated entities that have locomotors.
             // We can keep this optimization from later versions as is server-side.
-            /* V10_TODO
-            foreach (var entity in LocomotionEntities)
-                if (entity is WorldEntity worldEntity)
-                    worldEntity?.Locomotor.Locomote();
-            */
+            foreach (Entity entity in LocomotionEntities)
+            {
+                WorldEntity worldEntity = entity as WorldEntity;
+                if (!Verify.IsNotNull(worldEntity))
+                    continue;
+
+                Locomotor locomotor = worldEntity.Locomotor;
+                if (!Verify.IsNotNull(locomotor))
+                    continue;
+
+                locomotor.Locomote();
+            }
         }
 
         public void ProcessDeferredLists()
@@ -479,10 +486,9 @@ namespace MHServerEmu.Games.Entities
 
         private Entity GetEntity(ulong entityId, GetEntityFlags flags)
         {
-            // We should have a valid entity id by this point
-            if (entityId == Entity.InvalidId) return Logger.WarnReturn<Entity>(null, "GetEntity(): entityId == Entity.InvalidId");
+            if (!Verify.IsTrue(entityId != Entity.InvalidId)) return null;
 
-            if (_entityDict.TryGetValue(entityId, out Entity entity) && ValidateEntityForGet(entity, flags))
+            if (_entityMap.TryGetValue(entityId, out Entity entity) && ValidateEntityForGet(entity, flags))
                 return entity;
 
             // It appears there should be some kind of fallback to packed entities, but this code is not present in the client.
@@ -494,7 +500,7 @@ namespace MHServerEmu.Games.Entities
 
         private Entity GetEntityByDbGuid(ulong dbGuid, GetEntityFlags flags)
         {
-            if (_entityDbGuidDict.TryGetValue(dbGuid, out Entity entity) && ValidateEntityForGet(entity, flags))
+            if (_entityDbGuidMap.TryGetValue(dbGuid, out Entity entity) && ValidateEntityForGet(entity, flags))
                 return entity;
 
             // It appears there should be some kind of fallback to packed entities, but this code is not present in the client.
@@ -520,21 +526,16 @@ namespace MHServerEmu.Games.Entities
             /* V10_TODO
             foreach (ulong entityId in _entitiesPendingCondemnedPowerDeletion)
             {
-                if (_entityDict.TryGetValue(entityId, out Entity entity) == false)
+                if (_entityMap.TryGetValue(entityId, out Entity entity) == false)
                     continue;
 
-                if (entity is not WorldEntity worldEntity)
-                {
-                    Logger.Warn("ProcessCondemnedPowerList(): entity is not WorldEntity");
+                WorldEntity worldEntity = entity as WorldEntity;
+                if (!Verify.IsNotNull(worldEntity))
                     continue;
-                }
 
                 PowerCollection powerCollection = worldEntity.PowerCollection;
-                if (powerCollection == null)
-                {
-                    Logger.Warn("ProcessCondemnedPowerList(): powerCollection == null");
+                if (!Verify.IsNotNull(powerCollection))
                     continue;
-                }
 
                 powerCollection.DeleteCondemnedPowers();
             }
@@ -555,7 +556,7 @@ namespace MHServerEmu.Games.Entities
 
         private bool ProcessDestroyed()
         {
-            if (_game == null) return Logger.WarnReturn(false, "ProcessDestroyed(): _game == null");
+            if (!Verify.IsNotNull(_game)) return false;
 
             // Delete all destroyed entities
             while (_entitiesPendingDestruction.Count > 0)
@@ -563,10 +564,8 @@ namespace MHServerEmu.Games.Entities
                 LinkedListNode<ulong> deleteNode = _entitiesPendingDestruction.First;
                 ulong entityId = deleteNode.Value;
 
-                if (_entityDict.TryGetValue(entityId, out Entity entity))
+                if (Verify.IsTrue(_entityMap.TryGetValue(entityId, out Entity entity)))
                     DeleteEntity(entity);
-                else
-                    Logger.Warn($"ProcessDestroyed(): Failed to get entity for enqueued id {entityId}");
 
                 _entitiesPendingDestruction.RemoveFirst();
                 ReturnDestroyListNode(deleteNode);
@@ -577,11 +576,10 @@ namespace MHServerEmu.Games.Entities
 
         private bool ProcessPendingDestroyImmediate(Entity destroyedEntity)
         {
-            if (destroyedEntity == null) return Logger.WarnReturn(false, "ProcessPendingDestroyImmediate(): destroyedEntity == null");
+            if (!Verify.IsNotNull(destroyedEntity)) return false;
 
             LinkedListNode<ulong> destroyNode = _entitiesPendingDestruction.Find(destroyedEntity.Id);
-            if (destroyNode == null)
-                return Logger.WarnReturn(false, $"ProcessPendingDestroyImmediate(): Entity {destroyedEntity} is not found in the pending destruction list");
+            if (!Verify.IsNotNull(destroyNode)) return false;
 
             // Delete the entity manually and remove it from the list
             DeleteEntity(destroyedEntity);
@@ -593,25 +591,34 @@ namespace MHServerEmu.Games.Entities
 
         private bool DeleteEntity(Entity entity)
         {
-            if (entity == null) return Logger.WarnReturn(false, "DeleteEntity(): entity == null");
-            _entityDict.Remove(entity.Id);
+            if (!Verify.IsNotNull(entity)) return false;
+            _entityMap.Remove(entity.Id);
             entity.OnDeallocate();
             return true;
         }
 
         public void EnableAI(bool enable)
         {
-            if (IsAIEnabled == enable) return;
+            if (IsAIEnabled == enable)
+                return;
+
             IsAIEnabled = enable;
 
             /* V10_TODO
             if (enable)
-                foreach (var entity in SimulatedEntities)
-                    if (entity is Agent agent) agent.AIController?.SetIsEnabled(true);
+            {
+                foreach (Entity entity in SimulatedEntities)
+                {
+                    if (entity is Agent agent)
+                        agent.AIController?.SetIsEnabled(true);
+                }
+            }
 
-            foreach (var entity in _entityDict.Values)
+            foreach (Entity entity in this)
+            {
                 if (entity is WorldEntity worldEntity && entity is not Missile && worldEntity.IsInWorld)
                     worldEntity.Locomotor?.Stop();
+            }
             */
         }
     }

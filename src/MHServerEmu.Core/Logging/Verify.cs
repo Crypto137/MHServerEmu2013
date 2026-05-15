@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace MHServerEmu.Core.Logging
 {
@@ -50,7 +49,7 @@ namespace MHServerEmu.Core.Logging
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsTrue(bool condition,
             LoggingLevel loggingLevel,
-            [InterpolatedStringHandlerArgument(nameof(condition))] ref InterpolatedStringHandler message,
+            [InterpolatedStringHandlerArgument(nameof(condition))] ref VerifyInterpolatedStringHandler message,
             [CallerMemberName] string member = null,
             [CallerFilePath] string file = null,
             [CallerLineNumber] int line = 0)
@@ -66,7 +65,7 @@ namespace MHServerEmu.Core.Logging
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsTrue(bool condition,
-            [InterpolatedStringHandlerArgument(nameof(condition))] ref InterpolatedStringHandler message,
+            [InterpolatedStringHandlerArgument(nameof(condition))] ref VerifyInterpolatedStringHandler message,
             [CallerMemberName] string member = null,
             [CallerFilePath] string file = null,
             [CallerLineNumber] int line = 0)
@@ -117,7 +116,7 @@ namespace MHServerEmu.Core.Logging
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNotNull<T>(T instance,
             LoggingLevel loggingLevel,
-            [InterpolatedStringHandlerArgument(nameof(instance))] ref InterpolatedStringHandler message,
+            [InterpolatedStringHandlerArgument(nameof(instance))] ref VerifyInterpolatedStringHandler message,
             [CallerMemberName] string member = null,
             [CallerFilePath] string file = null,
             [CallerLineNumber] int line = 0) where T : class
@@ -136,7 +135,7 @@ namespace MHServerEmu.Core.Logging
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool IsNotNull<T>(T instance,
-            [InterpolatedStringHandlerArgument(nameof(instance))] ref InterpolatedStringHandler message,
+            [InterpolatedStringHandlerArgument(nameof(instance))] ref VerifyInterpolatedStringHandler message,
             [CallerMemberName] string member = null,
             [CallerFilePath] string file = null,
             [CallerLineNumber] int line = 0) where T : class
@@ -154,47 +153,6 @@ namespace MHServerEmu.Core.Logging
         {
             // This imitates Gazillion::Verify::VerifyFail(). We can potentially do other things with these here like Gazillion.
             Logger.Log(level, $"Verify failed: {message}\n\tFile:{file} Line:{line} Member:{member}()");
-        }
-
-        [InterpolatedStringHandler]
-        public readonly ref struct InterpolatedStringHandler
-        {
-            private readonly StringBuilder _sb;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public InterpolatedStringHandler(int literalLength, int formattedCount, bool condition, out bool isEnabled)
-            {
-                if (condition == false)
-                    _sb = new();
-
-                isEnabled = _sb != null;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public InterpolatedStringHandler(int literalLength, int formattedCount, object instance, out bool isEnabled)
-            {
-                if (instance == null)
-                    _sb = new();
-
-                isEnabled = _sb != null;
-            }
-
-            public override string ToString()
-            {
-                return _sb?.ToString();
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void AppendLiteral(string s)
-            {
-                _sb.Append(s);
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public void AppendFormatted<T>(T t)
-            {
-                _sb.Append(t?.ToString());
-            }
         }
     }
 }

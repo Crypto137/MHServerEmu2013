@@ -1,6 +1,7 @@
 ﻿using Gazillion;
 using Google.ProtocolBuffers;
 using MHServerEmu.Core.Collections;
+using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.Serialization;
@@ -103,17 +104,14 @@ namespace MHServerEmu.Games.Entities
             foreach (PrototypeId invProtoRef in _unlockedInventoryList)
             {
                 PlayerStashInventoryPrototype stashInvProto = GameDatabase.GetPrototype<PlayerStashInventoryPrototype>(invProtoRef);
-                if (stashInvProto == null)
-                {
-                    Logger.Warn("OnUnpackComplete(): stashInvProto == null");
+                if (!Verify.IsNotNull(stashInvProto))
                     continue;
-                }
 
                 // V10_NOTE: No unified stash in 1.10
 
                 Inventory inventory = GetInventoryByRef(invProtoRef);
-                if (inventory == null && AddInventory(invProtoRef) == false)
-                    Logger.Warn($"OnUnpackComplete(): Failed to add inventory, invProtoRef={invProtoRef.GetName()}");
+                if (inventory == null)
+                    Verify.IsTrue(AddInventory(invProtoRef), $"Failed to add inventory, invProtoRef={invProtoRef.GetName()}");
             }
         }
 
@@ -246,32 +244,31 @@ namespace MHServerEmu.Games.Entities
             return true;
         }
 
-        protected override bool InitInventories(bool populateInventories)
+        protected override bool InitInventories(bool populate)
         {
-            bool success = base.InitInventories(populateInventories);
+            bool success = base.InitInventories(populate);
 
             PlayerPrototype playerProto = Prototype as PlayerPrototype;
-            if (playerProto == null) return Logger.WarnReturn(false, "InitInventories(): playerProto == null");
+            if (!Verify.IsNotNull(playerProto)) return false;
+
+            if (playerProto.StashInventories.IsNullOrEmpty())
+                return success;
 
             foreach (EntityInventoryAssignmentPrototype invEntryProto in playerProto.StashInventories)
             {
-                var stashInvProto = invEntryProto.Inventory.As<PlayerStashInventoryPrototype>();
-                if (stashInvProto == null)
-                {
-                    Logger.Warn("InitInventories(): stashInvProto == null");
+                if (!Verify.IsTrue(invEntryProto.Inventory != PrototypeId.Invalid))
                     continue;
-                }
+
+                Verify.IsTrue(invEntryProto.LootTable == PrototypeId.Invalid, $"The StashInventories entry for the following stash page inventory in the Player blueprint specifies a LootTable, which is not going to be used!\n[{invEntryProto.Inventory.GetName()}]");
+
+                PlayerStashInventoryPrototype stashInvProto = invEntryProto.Inventory.As<PlayerStashInventoryPrototype>();
+                if (!Verify.IsNotNull(stashInvProto))
+                    continue;
 
                 // V10_NOTE: No unified stash in 1.10
 
                 if (stashInvProto.LockedByDefault == false)
-                {
-                    if (AddInventory(invEntryProto.Inventory) == false)
-                    {
-                        Logger.Warn($"InitInventories(): Failed to add inventory, invProtoRef={GameDatabase.GetPrototypeName(invEntryProto.Inventory)}");
-                        success = false;
-                    }
-                }
+                    success &= Verify.IsTrue(AddInventory(invEntryProto.Inventory));
             }
 
             return success;
@@ -312,7 +309,7 @@ namespace MHServerEmu.Games.Entities
 
         public Avatar GetAvatar(PrototypeId avatarProtoRef)
         {
-            if (avatarProtoRef == PrototypeId.Invalid) return Logger.WarnReturn<Avatar>(null, "GetAvatar(): avatarProtoRef == PrototypeId.Invalid");
+            if (!Verify.IsTrue(avatarProtoRef != PrototypeId.Invalid)) return null;
 
             AvatarIterator iterator = new(this, AvatarIteratorMode.IncludeArchived, avatarProtoRef);
             AvatarIterator.Enumerator enumerator = iterator.GetEnumerator();
@@ -322,20 +319,31 @@ namespace MHServerEmu.Games.Entities
             return null;
         }
 
-        public bool CreateAvatar(PrototypeId avatarProtoRef)
+        public Avatar CreateAvatar(PrototypeId avatarProtoRef)
         {
-            Avatar avatar = GetAvatar(avatarProtoRef);
-            if (avatar != null)
-                return Logger.WarnReturn(false, $"CreateAvatar(): avatarProtoRef {avatarProtoRef.GetName()} already exists for player {Id}");
+            AvatarPrototype avatarProto = avatarProtoRef.As<AvatarPrototype>();
+            if (!Verify.IsNotNull(avatarProto)) return null;
+
+            if (!Verify.IsTrue(GetAvatar(avatarProtoRef) == null, $"Player [{this}] is trying to create avatar {avatarProto} that is already unlocked"))
+                return null;
 
             Inventory avatarLibrary = GetInventory(InventoryConvenienceLabel.AvatarLibrary);
-            if (avatarLibrary == null) return Logger.WarnReturn(false, "CreateAvatar(): avatarLibrary == null");
+            if (!Verify.IsNotNull(avatarLibrary)) return null;
 
-            using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
-            settings.EntityRef = avatarProtoRef;
-            settings.InventoryLocation = new(Id, avatarLibrary.PrototypeDataRef);
+            using EntitySettings avatarSettings = ObjectPoolManager.Instance.Get<EntitySettings>();
+            avatarSettings.EntityRef = avatarProtoRef;
+            avatarSettings.InventoryLocation = new(Id, avatarLibrary.PrototypeDataRef);
 
-            return Game.EntityManager.CreateEntity(settings) != null;
+            Avatar avatar = Game.EntityManager.CreateEntity(avatarSettings) as Avatar;
+            if (!Verify.IsNotNull(avatar, LoggingLevel.Error)) return null;
+
+            /* V10_TODO
+            avatar.InitializeLevel(1);
+            avatar.ResetResources(false);
+            avatar.GiveStartingCostume();
+            */
+
+            return avatar;
         }
 
         public bool SwitchAvatar(PrototypeId avatarProtoRef)
@@ -344,10 +352,10 @@ namespace MHServerEmu.Games.Entities
             Avatar currentAvatar = CurrentAvatar;
 
             Avatar avatarToSwitchTo = GetAvatar(avatarProtoRef);
-            if (avatarToSwitchTo == null) return Logger.WarnReturn(false, "SwitchAvatar(): avatarToSwitchTo == null");
+            if (!Verify.IsNotNull(avatarToSwitchTo)) return false;
 
             Inventory avatarInPlay = GetInventory(InventoryConvenienceLabel.AvatarInPlay);
-            if (avatarInPlay == null) return Logger.WarnReturn(false, "OnSwitchAvatar(): avatarInPlay == null");
+            if (!Verify.IsNotNull(avatarInPlay)) return false;
 
             Region region = default;
             Vector3 position = default;
@@ -385,15 +393,11 @@ namespace MHServerEmu.Games.Entities
 
         public bool EnableCurrentAvatar(bool withSwapInPower, ulong lastCurrentAvatarId, ulong regionId, in Vector3 position, in Orientation orientation)
         {
-            if (CurrentAvatar == null)
-                return Logger.WarnReturn(false, "EnableCurrentAvatar(): CurrentAvatar == null");
-
-            if (CurrentAvatar.IsInWorld)
-                return Logger.WarnReturn(false, "EnableCurrentAvatar(): Current avatar is already active");
+            if (!Verify.IsNotNull(CurrentAvatar)) return false;
+            if (!Verify.IsTrue(CurrentAvatar.IsInWorld == false)) return false;
 
             Region region = Game.RegionManager.GetRegion(regionId);
-            if (region == null)
-                return Logger.WarnReturn(false, "EnableCurrentAvtar(): region == null");
+            if (!Verify.IsNotNull(region)) return false;
 
             Logger.Trace($"EnableCurrentAvatar(): [{CurrentAvatar}] entering world in region [{region}]");
 
@@ -460,7 +464,7 @@ namespace MHServerEmu.Games.Entities
 
         private bool FinishTeleport()
         {
-            if (_teleportData.IsValid == false) return Logger.WarnReturn(false, "FinishTeleport(): No valid teleport data");
+            if (!Verify.IsTrue(_teleportData.IsValid)) return false;
 
             EnableCurrentAvatar(false, CurrentAvatar.Id, _teleportData.RegionId, _teleportData.Position, _teleportData.Orientation);
             _teleportData.Clear();
@@ -476,7 +480,7 @@ namespace MHServerEmu.Games.Entities
 
         public bool InterestedInEntity(Entity entity, AOINetworkPolicyValues interestFilter)
         {
-            if (entity == null) return Logger.WarnReturn(false, "InterestedInEntity(): entity == null");
+            if (!Verify.IsNotNull(entity)) return false;
 
             if (entity.InterestReferences.IsPlayerInterested(this) == false)
                 return false;

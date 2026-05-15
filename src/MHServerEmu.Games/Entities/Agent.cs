@@ -20,7 +20,7 @@ namespace MHServerEmu.Games.Entities
         public override bool Initialize(EntitySettings settings)
         {
             AgentPrototype agentProto = GameDatabase.GetPrototype<AgentPrototype>(settings.EntityRef);
-            if (agentProto == null) return Logger.WarnReturn(false, "Initialize(): agentProto == null");
+            if (!Verify.IsNotNull(agentProto)) return false;
 
             if (agentProto.Locomotion.Immobile == false)
                 Locomotor = new();

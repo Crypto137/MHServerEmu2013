@@ -85,7 +85,7 @@ namespace MHServerEmu.Games.Entities
 
         public override bool Initialize(EntitySettings settings)
         {
-            if (base.Initialize(settings) == false) return Logger.WarnReturn(false, "Initialize(): base.Initialize(settings) == false");
+            if (!Verify.IsTrue(base.Initialize(settings))) return false;
 
             WorldEntityPrototype worldEntityProto = WorldEntityPrototype;
 
@@ -177,11 +177,11 @@ namespace MHServerEmu.Games.Entities
             {
                 RegionLocation.SetPositionResult result = _regionLocation.SetPosition(position.Value);
 
-                if (result != RegionLocation.SetPositionResult.Success)     // onSetPositionFailure()
+                if (result != RegionLocation.SetPositionResult.Success)
                 {
-                    return Logger.WarnReturn(ChangePositionResult.NotChanged, string.Format(
-                        "ChangeRegionPosition(): Failed to set entity new position (Moved out of world)\n\tEntity: {0}\n\tResult: {1}\n\tPrev Loc: {2}\n\tNew Pos: {3}",
-                        this, result, _regionLocation.ToString(), position));
+                    // onSetPositionFailure()
+                    Verify.IsTrue(false, $"Failed to set entity new position (Moved out of world)\n\tEntity: {this}\n\tResult: {result}\n\tPrev Loc: {_regionLocation.ToString()}\n\tNew Pos: {position}");
+                    return ChangePositionResult.InvalidPosition;
                 }
 
                 if (_bounds.Geometry != GeometryType.None)

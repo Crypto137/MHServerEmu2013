@@ -27,8 +27,6 @@ namespace MHServerEmu.Games.Entities.Avatars
         private const int NumActionKeySlots = 6;   // non-mouse slots
         private const int NumHotkeys = 6;
 
-        private static readonly Logger Logger = LogManager.CreateLogger();
-
         private PrototypeId _associatedTransformMode;
 
         // Assignable slots
@@ -98,13 +96,13 @@ namespace MHServerEmu.Games.Entities.Avatars
         /// <summary>
         /// Slots default abilities into all slots.
         /// </summary>
-        public bool SlotDefaultAbilities(Avatar avatar)
+        public void SlotDefaultAbilities(Avatar avatar)
         {
             AvatarPrototype avatarProto = avatar.AvatarPrototype;
-            if (avatarProto == null) return Logger.WarnReturn(false, "SlotDefaultAbilities(): avatarProto == null");
+            if (!Verify.IsNotNull(avatarProto)) return;
 
             if (avatarProto.StartingEquippedAbilities.IsNullOrEmpty())
-                return true;
+                return;
 
             AbilitySlot lastSlot = (AbilitySlot)Math.Min(avatarProto.StartingEquippedAbilities.Length, (int)AbilitySlot.NumActions);
 
@@ -114,7 +112,7 @@ namespace MHServerEmu.Games.Entities.Avatars
                 SetAbilityInAbilitySlot(abilityAssignment.Ability, slot);
             }
 
-            return true;
+            return;
         }
 
         /// <summary>
@@ -128,7 +126,8 @@ namespace MHServerEmu.Games.Entities.Avatars
             if (slot < AbilitySlot.NumActions)
                 return (int)slot - 2;
 
-            return Logger.WarnReturn((int)slot, $"ConvertSlotToArrayIndex(): Enum argument is not within an array-stored ability slot range");
+            Verify.IsTrue(false, "Code is calling ConvertSlotToArrayIndex() with a slot enum argument that is not within an array-stored ability slot range!");
+            return (int)slot;
         }
     }
 }

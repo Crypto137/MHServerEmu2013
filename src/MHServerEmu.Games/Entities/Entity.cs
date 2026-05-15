@@ -165,19 +165,19 @@ namespace MHServerEmu.Games.Entities
 
         public virtual bool Initialize(EntitySettings settings)
         {
-            if (Game == null) return Logger.WarnReturn(false, "Initialize(): Game == null");
+            if (!Verify.IsNotNull(Game)) return false;
 
             Id = settings.Id;
-            if (Id == InvalidId) return Logger.WarnReturn(false, "Initialize(): Id == Entity.InvalidId");
+            if (!Verify.IsTrue(Id != InvalidId)) return false;
 
             DatabaseUniqueId = settings.DbGuid;
 
             // Set prototype reference
             PrototypeDataRef = settings.EntityRef;
-            if (PrototypeDataRef == PrototypeId.Invalid) return Logger.WarnReturn(false, "Initialize(): Invalid PrototypeDataRef");
+            if (!Verify.IsTrue(PrototypeDataRef != PrototypeId.Invalid)) return false;
 
             Prototype = PrototypeDataRef.As<EntityPrototype>();
-            if (Prototype == null) return Logger.WarnReturn(false, "Initialize(): Prototype == null");
+            if (!Verify.IsNotNull(Prototype)) return false;
 
             BindReplicatedFields();
 
@@ -192,6 +192,11 @@ namespace MHServerEmu.Games.Entities
             InitInventories(settings.OptionFlags.HasFlag(EntitySettingsOptionFlags.PopulateInventories));
 
             return true;
+        }
+
+        public virtual void AdjustDifficulty(DebugGlobalsPrototype debugGlobals)
+        {
+            // This appears to be a debug-only initialization step.
         }
 
         public virtual void OnPostInit(EntitySettings settings)
@@ -211,8 +216,9 @@ namespace MHServerEmu.Games.Entities
 
                 foreach (EvalPrototype evalProto in Prototype.EvalOnCreate)
                 {
-                    if (Eval.RunBool(evalProto, evalContext) == false)
-                        Logger.Warn($"OnPostInit(): Failed to run eval {evalProto.ExpressionString()}");
+                    // Entity::GenerateEntityProperties()
+                    bool curEvalSucceeded = Eval.RunBool(evalProto, evalContext);
+                    Verify.IsTrue(curEvalSucceeded, $"The following EvalOnCreate Eval in an entity failed:\nEval: [{evalProto.ExpressionString()}]\nEntity: [{this}]");
                 }
             }
         }
@@ -311,7 +317,7 @@ namespace MHServerEmu.Games.Entities
 
         public bool DestroyContained()
         {
-            if (Game == null) return Logger.WarnReturn(false, "DestroyContained(): Game == null");
+            if (!Verify.IsNotNull(Game)) return false;
 
             foreach (Inventory inventory in InventoryCollection)
                 inventory.DestroyContained();
@@ -492,7 +498,7 @@ namespace MHServerEmu.Games.Entities
 
         public bool Owns(Entity entity)
         {
-            if (entity == null) return Logger.WarnReturn(false, "Owns(): entity == null");
+            if (!Verify.IsNotNull(entity)) return false;
             return entity.IsOwnedBy(Id);
         }
 
@@ -560,8 +566,8 @@ namespace MHServerEmu.Games.Entities
             if (destInventory != null)
             {
                 InventoryResult destInventoryResult = CanChangeInventoryLocation(destInventory);
-                if (destInventoryResult != InventoryResult.Success) return Logger.WarnReturn(destInventoryResult,
-                    $"ChangeInventoryLocation(): result=[{destInventoryResult}] allowStacking=[{allowStacking}] destSlot=[{destSlot}] destInventory=[{destInventory}] entity=[{Id}]");
+                if (!Verify.IsTrue(destInventoryResult == InventoryResult.Success, $"result=[{destInventoryResult}] allowStacking=[{allowStacking}] destSlot=[{destSlot}] destInventory=[{destInventory}] entity=[{Id}]"))
+                    return destInventoryResult;
             }
 
             return Inventory.ChangeEntityInventoryLocation(this, destInventory, destSlot, ref stackEntityId, allowStacking);
@@ -576,7 +582,7 @@ namespace MHServerEmu.Games.Entities
         public bool CanStack()
         {
             if (MaxStackSize < 2) return false;
-            if (CurrentStackSize > MaxStackSize) Logger.WarnReturn(false, "CanStack(): CurrentStackSize > MaxStackSize");
+            if (!Verify.IsTrue(CurrentStackSize <= MaxStackSize)) return false;
             if (CurrentStackSize == MaxStackSize) return false;
             return true;
         }
@@ -594,20 +600,17 @@ namespace MHServerEmu.Games.Entities
             return true;
         }
 
-        protected virtual bool InitInventories(bool populateInventories)
+        protected virtual bool InitInventories(bool populate)
         {
             bool success = true;
 
             EntityPrototype entityPrototype = Prototype;
-            if (entityPrototype == null) return Logger.WarnReturn(false, "InitInventories(): entityPrototype == null");
+            if (!Verify.IsNotNull(entityPrototype)) return false;
 
-            foreach (EntityInventoryAssignmentPrototype invAssignmentProto in entityPrototype.Inventories)
+            if (entityPrototype.Inventories.HasValue())
             {
-                if (AddInventory(invAssignmentProto.Inventory, invAssignmentProto.LootTable) == false)
-                {
-                    Logger.Warn($"InitInventories(): Failed to add inventory, invProtoRef={GameDatabase.GetPrototypeName(invAssignmentProto.Inventory)}");
-                    success = false;
-                }
+                foreach (EntityInventoryAssignmentPrototype invAssignmentProto in entityPrototype.Inventories)
+                    success &= Verify.IsTrue(AddInventory(invAssignmentProto.Inventory, populate ? invAssignmentProto.LootTable : PrototypeId.Invalid));
             }
 
             return success;
@@ -627,21 +630,24 @@ namespace MHServerEmu.Games.Entities
         {
             if (collection == EntityCollection.All) return true;
             var list = GetInvasiveCollection(collection);
-            if (list == null) return Logger.WarnReturn(false, "ModifyCollectionMembership(): list == null");
+            if (!Verify.IsNotNull(list)) return false;
 
             bool isInCollection = IsInCollection(collection);
             if (add && isInCollection == false)
             {
                 if (collection == EntityCollection.Simulated || collection == EntityCollection.Locomotion)
                 {
-                    if (TestStatus(EntityStatus.Destroyed))
-                        return Logger.WarnReturn(false, $"ModifyCollectionMembership(): Trying to add destroyed entity {ToString()} to collection {collection}");
+                    if (!Verify.IsTrue(TestStatus(EntityStatus.Destroyed) == false, $"Trying to add destroyed entity {ToString()} to collection {collection}"))
+                        return false;
 
-                    if (IsInGame == false)
-                        return Logger.WarnReturn(false, $"ModifyCollectionMembership(): Trying to add out of game entity {ToString()} to collection {collection}");
+                    if (!Verify.IsTrue(IsInGame, $"Trying to add out of game entity {ToString()} to collection {collection}"))
+                        return false;
 
-                    if (this is WorldEntity worldEntity && worldEntity.IsInWorld == false)
-                        return Logger.WarnReturn(false, $"ModifyCollectionMembership(): Trying to add out of world entity {ToString()} to collection {collection}");
+                    if (this is WorldEntity worldEntity)
+                    {
+                        if (!Verify.IsTrue(worldEntity.IsInWorld, $"Trying to add out of world entity {ToString()} to collection {collection}"))
+                            return false;
+                    }
                 }
 
                 if (collection == EntityCollection.Simulated) SetFlag(EntityFlags.IsSimulated, true);

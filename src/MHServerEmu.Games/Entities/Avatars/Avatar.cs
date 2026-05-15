@@ -1,4 +1,5 @@
 ﻿using Gazillion;
+using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Serialization;
 using MHServerEmu.Core.VectorMath;
@@ -25,6 +26,7 @@ namespace MHServerEmu.Games.Entities.Avatars
 
         private List<AbilityKeyMapping> _abilityKeyMappings = new();
 
+        public uint AvatarWorldInstanceId { get; private set; } = 0;
         public RepVar_string PlayerName { get; } = new();
         public RepVar_ulong PlayerDbId { get; } = new();     // Is this really PlayerDbId?
 
@@ -119,21 +121,15 @@ namespace MHServerEmu.Games.Entities.Avatars
 
         public override ChangePositionResult ChangeRegionPosition(Vector3? position, Orientation? orientation, ChangePositionFlags flags = ChangePositionFlags.None)
         {
-            if (RegionLocation.IsValid == false)
-                return Logger.WarnReturn(ChangePositionResult.NotChanged, "ChangeRegionPosition(): Cannot change region position without entering the world first");
+            if (!Verify.IsTrue(position != null || orientation != null)) return ChangePositionResult.NotChanged;
 
-            // We only need to do AOI processing if the avatar is changing its position
+            // Orientation only changes skip AOI processing
             if (position == null)
-            {
-                if (orientation != null)
-                    return base.ChangeRegionPosition(position, orientation, flags);
-                else
-                    return Logger.WarnReturn(ChangePositionResult.NotChanged, "ChangeRegionPosition(): No position or orientation provided");
-            }
+                return base.ChangeRegionPosition(position, orientation, flags);
 
             // Get player for AOI update
             Player player = GetOwnerOfType<Player>();
-            if (player == null) return Logger.WarnReturn(ChangePositionResult.NotChanged, "ChangeRegionPosition(): player == null");
+            if (!Verify.IsNotNull(player)) return ChangePositionResult.NotChanged;
 
             ChangePositionResult result;
 
@@ -144,21 +140,33 @@ namespace MHServerEmu.Games.Entities.Avatars
                 // Do a normal position change and update AOI if the position is loaded
                 result = base.ChangeRegionPosition(position, orientation, flags);
                 if (result == ChangePositionResult.PositionChanged)
+                {
+                    // Increment AvatarWorldInstanceId before updating AOI to make sure it reaches clients.
+                    if (flags.HasFlag(ChangePositionFlags.EnterWorld))
+                        AvatarWorldInstanceId++;
+
                     player.AOI.Update(RegionLocation.Position);
+                }
             }
             else
             {
                 // If we are moving outside of our AOI, start a teleport and exit world.
                 // The avatar will be put back into the world when all cells at the destination are loaded.
-                if (RegionLocation.Region.GetCellAtPosition(position.Value) == null)
-                    return Logger.WarnReturn(ChangePositionResult.InvalidPosition, $"ChangeRegionPosition(): Invalid position {position.Value}");
+                if (!Verify.IsTrue(IsInWorld)) return ChangePositionResult.NotChanged;
+
+                Region region = Region;
+                if (!Verify.IsNotNull(region)) return ChangePositionResult.NotChanged;
+
+                Cell cellAtPosition = region.GetCellAtPosition(position.Value);
+                if (!Verify.IsNotNull(cellAtPosition)) return ChangePositionResult.NotChanged;
 
                 player.BeginTeleport(RegionLocation.RegionId, position.Value, orientation != null ? orientation.Value : Orientation.Zero);
+                // V10_NOTE: No CancelOnTransfer conditions in 1.10.
                 ExitWorld();
                 player.AOI.Update(position.Value);
                 result = ChangePositionResult.Teleport;
             }
-            
+
             /* V10_TODO
             if (result == ChangePositionResult.PositionChanged)
             {
@@ -195,7 +203,7 @@ namespace MHServerEmu.Games.Entities.Avatars
         public bool SlotAbility(PrototypeId abilityProtoRef, AbilitySlot slot, bool skipEquipValidation, bool sendToClient)
         {
             AbilityKeyMapping keyMapping = GetAbilityKeyMappingIgnoreTransient();
-            if (keyMapping == null) return Logger.WarnReturn(false, "SlotAbility(): keyMapping == null");
+            if (!Verify.IsNotNull(keyMapping)) return false;
 
             // V10_TODO: Validation
 
@@ -206,7 +214,7 @@ namespace MHServerEmu.Games.Entities.Avatars
             if (sendToClient)
             {
                 Player player = GetOwnerOfType<Player>();
-                if (player == null) return Logger.WarnReturn(false, "SlotAbility(): player == null");
+                if (!Verify.IsNotNull(player)) return false;
 
                 if (player.InterestedInEntity(this, AOINetworkPolicyValues.AOIChannelOwner))
                 {
@@ -224,7 +232,7 @@ namespace MHServerEmu.Games.Entities.Avatars
         public bool UnslotAbility(AbilitySlot slot, bool sendToClient)
         {
             AbilityKeyMapping keyMapping = GetAbilityKeyMappingIgnoreTransient();
-            if (keyMapping == null) return Logger.WarnReturn(false, "UnslotAbility(): keyMapping == null");
+            if (!Verify.IsNotNull(keyMapping)) return false;
 
             // V10_TODO: Validation
 
@@ -235,7 +243,7 @@ namespace MHServerEmu.Games.Entities.Avatars
             if (sendToClient)
             {
                 Player player = GetOwnerOfType<Player>();
-                if (player == null) return Logger.WarnReturn(false, "UnslotAbility(): player == null");
+                if (!Verify.IsNotNull(player)) return false;
 
                 if (player.InterestedInEntity(this, AOINetworkPolicyValues.AOIChannelOwner))
                 {
@@ -253,7 +261,7 @@ namespace MHServerEmu.Games.Entities.Avatars
         {
             // V10_NOTE: Transient swaps are allowed in modern versions of the game, is this true in 1.10?
             AbilityKeyMapping keyMapping = GetAbilityKeyMappingIgnoreTransient();
-            if (keyMapping == null) return Logger.WarnReturn(false, "SwapAbilities(): keyMapping == null");
+            if (!Verify.IsNotNull(keyMapping)) return false;
 
             // V10_TODO: Validation
 
@@ -267,7 +275,7 @@ namespace MHServerEmu.Games.Entities.Avatars
             if (sendToClient)
             {
                 Player player = GetOwnerOfType<Player>();
-                if (player == null) return Logger.WarnReturn(false, "SwapAbilities(): player == null");
+                if (!Verify.IsNotNull(player)) return false;
 
                 if (player.InterestedInEntity(this, AOINetworkPolicyValues.AOIChannelOwner))
                 {
@@ -299,7 +307,7 @@ namespace MHServerEmu.Games.Entities.Avatars
         {
             // V10_TODO: More stuff, virtual override
             Player player = GetOwnerOfType<Player>();
-            if (player == null) return Logger.WarnReturn(false, "UseInteractableObject(): player == null");
+            if (!Verify.IsNotNull(player)) return false;
 
             if (missionRef != PrototypeId.Invalid)
                 player.MissionInteractRelease(this, missionRef);
@@ -321,15 +329,12 @@ namespace MHServerEmu.Games.Entities.Avatars
         public InventoryResult GetEquipmentInventoryAvailableStatus(PrototypeId invProtoRef)
         {
             AvatarPrototype avatarProto = AvatarPrototype;
-            if (avatarProto == null) return Logger.WarnReturn(InventoryResult.UnknownFailure, "GetEquipmentInventoryAvailableStatus(): avatarProto == null");
+            if (!Verify.IsNotNull(avatarProto)) return InventoryResult.UnknownFailure;
 
             foreach (AvatarEquipInventoryAssignmentPrototype equipInvEntryProto in avatarProto.EquipmentInventories)
             {
-                if (equipInvEntryProto == null)
-                {
-                    Logger.Warn("GetEquipmentInventoryAvailableStatus(): equipInvEntryProto == null");
+                if (!Verify.IsNotNull(equipInvEntryProto))
                     continue;
-                }
 
                 if (equipInvEntryProto.Inventory == invProtoRef)
                 {
@@ -347,18 +352,17 @@ namespace MHServerEmu.Games.Entities.Avatars
             return InventoryResult.UnknownFailure;
         }
 
-        protected override bool InitInventories(bool populateInventories)
+        protected override bool InitInventories(bool populate)
         {
-            bool success = base.InitInventories(populateInventories);
+            bool success = base.InitInventories(populate);
 
             AvatarPrototype avatarProto = AvatarPrototype;
-            foreach (AvatarEquipInventoryAssignmentPrototype equipInvAssignment in avatarProto.EquipmentInventories)
+            if (!Verify.IsNotNull(avatarProto)) return false;
+
+            if (Verify.IsTrue(avatarProto.EquipmentInventories.HasValue()))
             {
-                if (AddInventory(equipInvAssignment.Inventory, populateInventories ? equipInvAssignment.LootTable : PrototypeId.Invalid) == false)
-                {
-                    success = false;
-                    Logger.Warn($"InitInventories(): Failed to add inventory {GameDatabase.GetPrototypeName(equipInvAssignment.Inventory)} to {this}");
-                }
+                foreach (AvatarEquipInventoryAssignmentPrototype equipInvAssignment in avatarProto.EquipmentInventories)
+                    success &= Verify.IsTrue(AddInventory(equipInvAssignment.Inventory, populate ? equipInvAssignment.LootTable : PrototypeId.Invalid));
             }
 
             return success;
@@ -375,18 +379,10 @@ namespace MHServerEmu.Games.Entities.Avatars
                 Properties[PropertyEnum.Health] = Properties[PropertyEnum.HealthMax];
 
             Player player = GetOwnerOfType<Player>();
-            if (player == null)
-            {
-                Logger.Warn("OnEnteredWorld(): player == null");
-                return;
-            }
+            if (!Verify.IsNotNull(player)) return;
 
             Region region = Region;
-            if (region == null)
-            {
-                Logger.Warn("OnEnteredWorld(): region == null");
-                return;
-            }
+            if (!Verify.IsNotNull(region)) return;
 
             base.OnEnteredWorld(settings);
 

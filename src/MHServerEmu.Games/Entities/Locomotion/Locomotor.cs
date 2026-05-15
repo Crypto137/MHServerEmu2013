@@ -1,4 +1,5 @@
-﻿using MHServerEmu.Core.VectorMath;
+﻿using MHServerEmu.Core.Logging;
+using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Properties;
 
@@ -45,10 +46,10 @@ namespace MHServerEmu.Games.Entities.Locomotion
             _rotationSpeed = locomotorProto.RotationSpeed;
             Height = heightOverride != 0.0f ? heightOverride : locomotorProto.Height;
 
-            if (_owner != null)
+            if (Verify.IsNotNull(_owner))
             {
-                var worldEntityProto = _owner.WorldEntityPrototype;
-                if (worldEntityProto != null)
+                WorldEntityPrototype worldEntityProto = _owner.WorldEntityPrototype;
+                if (Verify.IsNotNull(worldEntityProto))
                     _defaultMethod = worldEntityProto.NaviMethod;
             }
 
@@ -60,6 +61,10 @@ namespace MHServerEmu.Games.Entities.Locomotion
         {
             _giveUpDistanceThreshold = distanceThreshold;
             _giveUpTime = time;
+        }
+
+        public void Locomote()
+        {
         }
 
         public void SetSyncState(ref LocomotionState locomotionState, Vector3 syncPosition, Orientation syncOrientation)
