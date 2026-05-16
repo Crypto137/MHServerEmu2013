@@ -55,7 +55,7 @@ namespace MHServerEmu.Games.Entities.PowerCollections
             return true;
         }
 
-        public bool SerializeTo(Archive archive, PowerCollectionRecord previousRecord)
+        public bool SerializeTo(Archive archive)
         {
             if (!Verify.IsTrue(archive.IsPacking && archive.IsReplication)) return false;
 
