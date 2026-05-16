@@ -14,6 +14,7 @@ using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.GameData.Prototypes.MetaGame;
 using MHServerEmu.Games.MetaGames;
 using MHServerEmu.Games.Network;
+using MHServerEmu.Games.Powers;
 using MHServerEmu.Games.Regions;
 
 namespace MHServerEmu.Games
@@ -219,6 +220,18 @@ namespace MHServerEmu.Games
                 entity = new Entity(this);
 
             return entity;
+        }
+
+        public Power AllocatePower(PrototypeId powerProtoRef)
+        {
+            Type powerClassType = GameDatabase.DataDirectory.GetPrototypeClassType(powerProtoRef);
+
+            if (powerClassType == typeof(MissilePowerPrototype))
+                return new MissilePower(this, powerProtoRef);
+            else if (powerClassType == typeof(SummonPowerPrototype))
+                return new SummonPower(this, powerProtoRef);
+            else
+                return new Power(this, powerProtoRef);
         }
 
         public static long GetTimeFromStart(TimeSpan gameTime) => (long)(gameTime - StartTime).TotalMilliseconds;

@@ -7,6 +7,7 @@ using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.Common;
 using MHServerEmu.Games.Entities.Inventories;
 using MHServerEmu.Games.Entities.Locomotion;
+using MHServerEmu.Games.Entities.PowerCollections;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Regions;
@@ -523,7 +524,6 @@ namespace MHServerEmu.Games.Entities
 
         private void ProcessCondemnedPowerList()
         {
-            /* V10_TODO
             foreach (ulong entityId in _entitiesPendingCondemnedPowerDeletion)
             {
                 if (_entityMap.TryGetValue(entityId, out Entity entity) == false)
@@ -541,7 +541,6 @@ namespace MHServerEmu.Games.Entities
             }
 
             _entitiesPendingCondemnedPowerDeletion.Clear();
-            */
         }
 
         private static LinkedListNode<ulong> GetDestroyListNode(ulong entityId)

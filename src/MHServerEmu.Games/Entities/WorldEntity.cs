@@ -5,12 +5,13 @@ using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.Serialization;
 using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.Common;
-using MHServerEmu.Games.Entities.Avatars;
 using MHServerEmu.Games.Entities.Locomotion;
+using MHServerEmu.Games.Entities.PowerCollections;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Navi;
 using MHServerEmu.Games.Network;
+using MHServerEmu.Games.Powers;
 using MHServerEmu.Games.Properties;
 using MHServerEmu.Games.Regions;
 
@@ -50,6 +51,9 @@ namespace MHServerEmu.Games.Entities
 
         private Bounds _bounds = new();
 
+        protected ConditionCollection _conditionCollection;
+        protected PowerCollection _powerCollection;
+
         public ref RegionLocation RegionLocation { get => ref _regionLocation; }
         public bool IsInWorld { get => _regionLocation.IsValid; }
         public Region Region { get => _regionLocation.Region; }
@@ -59,7 +63,9 @@ namespace MHServerEmu.Games.Entities
         public Orientation Orientation { get => _regionLocation.Orientation; }
         public ref RegionLocationSafe ExitWorldRegionLocation { get => ref _exitWorldRegionLocation; }
 
-        public ConditionCollection ConditionCollection { get; private set; }
+        public ConditionCollection ConditionCollection { get => _conditionCollection; }
+        public PowerCollection PowerCollection { get => _powerCollection; }
+
         public EntityRegionSpatialPartitionLocation SpatialPartitionLocation { get; }
         public Aabb RegionBounds { get; set; }
         public ref Bounds Bounds { get => ref _bounds; }
@@ -100,7 +106,7 @@ namespace MHServerEmu.Games.Entities
                     _bounds.Scale(settings.BoundsScaleOverride);
             }
 
-            ConditionCollection = new(this);
+            _conditionCollection = new(this);
 
             // V10_REMOVEME: replace with OnPropertyChange
             Properties[PropertyEnum.HealthMaxOther] = Properties[PropertyEnum.HealthMax];
@@ -338,30 +344,60 @@ namespace MHServerEmu.Games.Entities
                 SetStatus(EntityStatus.ExitingWorld, false);
         }
 
-        public void AssignPower(PrototypeId powerProtoRef)
-        {
-            var message = NetMessagePowerCollectionAssignPower.CreateBuilder()
-                .SetEntityId(Id)
-                .SetPowerProtoId((ulong)powerProtoRef)
-                .SetTargetentityid(Id)
-                .SetPowerRank(1)
-                .SetCharacterLevel(1)
-                .SetItemLevel(1)
-                .SetPowerCollectionIsduplicating(false)
-                .Build();
+        #region Powers
 
-            Game.NetworkManager.SendMessageToInterested(message, this, AOINetworkPolicyValues.AOIChannelProximity);
+        public PowerCollection GetPowerCollectionAllocateIfNull(bool duplicatePowers = false)
+        {
+            _powerCollection ??= new(this, duplicatePowers);
+            return _powerCollection;
         }
+
+        public bool HasPowerInPowerCollection(PrototypeId powerProtoRef)
+        {
+            PowerCollection col = PowerCollection;  // variable name from the client
+            if (!Verify.IsNotNull(col)) return false;
+            return col.ContainsPower(powerProtoRef, 0);
+        }
+
+        public Power AssignPower(PrototypeId powerProtoRef, in PowerIndexProperties indexProps, bool sendPowerAssignmentToClients = true, PrototypeId triggeringPowerRef = PrototypeId.Invalid)
+        {
+            PowerCollection powerCollection = GetPowerCollectionAllocateIfNull();
+            if (!Verify.IsNotNull(powerCollection)) return null;
+
+            Power assignedPower = powerCollection.AssignPower(powerProtoRef, indexProps, triggeringPowerRef, sendPowerAssignmentToClients);
+            if (!Verify.IsNotNull(assignedPower)) return null;
+
+            return assignedPower;
+        }
+
+        public bool UnassignPower(PrototypeId powerProtoRef, bool sendPowerUnassignToClients = true)
+        {
+            if (HasPowerInPowerCollection(powerProtoRef) == false)
+                return false;
+
+            PowerCollection powerCollection = PowerCollection;
+            if (!Verify.IsNotNull(powerCollection)) return false;
+
+            if (!Verify.IsTrue(powerCollection.UnassignPower(powerProtoRef, sendPowerUnassignToClients))) return false;
+
+            return true;
+        }
+
+        #endregion
 
         #region Event Handlers
 
         protected virtual void OnEnteredWorld(EntitySettings settings)
         {
+            PowerCollection?.OnOwnerEnteredWorld();
+
             UpdateInterestPolicies(true, settings);
         }
 
         protected virtual void OnExitedWorld()
         {
+            PowerCollection?.OnOwnerExitedWorld();
+
             UpdateInterestPolicies(false);
         }
 

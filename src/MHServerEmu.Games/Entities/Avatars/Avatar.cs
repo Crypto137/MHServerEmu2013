@@ -5,6 +5,7 @@ using MHServerEmu.Core.Serialization;
 using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.Common;
 using MHServerEmu.Games.Entities.Inventories;
+using MHServerEmu.Games.Entities.PowerCollections;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Network;
@@ -31,6 +32,8 @@ namespace MHServerEmu.Games.Entities.Avatars
         public RepVar_ulong PlayerDbId { get; } = new();     // Is this really PlayerDbId?
 
         public AvatarPrototype AvatarPrototype { get => Prototype as AvatarPrototype; }
+
+        public PrototypeId CurrentTransformMode { get; private set; } = PrototypeId.Invalid;
 
         public override bool IsMovementAuthoritative { get => false; }
 
@@ -184,15 +187,17 @@ namespace MHServerEmu.Games.Entities.Avatars
 
         private void InitializePowers()
         {
-            AssignPower(GameDatabase.GlobalsPrototype.AvatarSwapOutPower);
-            AssignPower(GameDatabase.GlobalsPrototype.AvatarSwapInPower);
-            AssignPower(GameDatabase.GlobalsPrototype.ReturnToHubPower);
-            AssignPower(GameDatabase.GlobalsPrototype.ReturnToFieldPower);
+            PowerIndexProperties indexProps = new(1, 1, 1);
+
+            AssignPower(GameDatabase.GlobalsPrototype.AvatarSwapOutPower, indexProps);
+            AssignPower(GameDatabase.GlobalsPrototype.AvatarSwapInPower, indexProps);
+            AssignPower(GameDatabase.GlobalsPrototype.ReturnToHubPower, indexProps);
+            AssignPower(GameDatabase.GlobalsPrototype.ReturnToFieldPower, indexProps);
 
             foreach (var kvp in Properties.IteratePropertyRange(PropertyEnum.PowerRankCurrentBest))
             {
                 Property.FromParam(kvp.Key, 0, out PrototypeId powerProtoRef);
-                AssignPower(powerProtoRef);
+                AssignPower(powerProtoRef, indexProps);
             }
         }
 

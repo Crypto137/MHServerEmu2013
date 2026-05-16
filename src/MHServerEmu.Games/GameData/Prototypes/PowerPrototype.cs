@@ -9,7 +9,7 @@ namespace MHServerEmu.Games.GameData.Prototypes
     {
         public PrototypePropertyCollection Properties { get; protected set; }
         public TriggeredPowerEventActionPrototype[] ActionsTriggeredOnPowerEvent { get; protected set; }
-        public AssetId Activation { get; protected set; }
+        public PowerActivationType Activation { get; protected set; }
         public float AnimationContactTimePercent { get; protected set; }
         public int AnimationTimeMS { get; protected set; }
         [ListMixin(typeof(ConditionPrototype))]
