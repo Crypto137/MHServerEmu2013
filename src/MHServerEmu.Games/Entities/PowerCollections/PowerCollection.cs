@@ -2,6 +2,8 @@
 using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Memory;
+using MHServerEmu.Core.Serialization;
+using MHServerEmu.Games.Common;
 using MHServerEmu.Games.Entities.Avatars;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
@@ -11,7 +13,7 @@ using MHServerEmu.Games.Properties;
 
 namespace MHServerEmu.Games.Entities.PowerCollections
 {
-    public class PowerCollection
+    public class PowerCollection : ISerialize
     {
         private const int MaxNumRecordsToSerialize = 256;
 
@@ -30,6 +32,83 @@ namespace MHServerEmu.Games.Entities.PowerCollections
             DuplicatesPowers = duplicatePowers;
 
             Verify.IsTrue(DuplicatesPowers == false || owner is Hotspot, $"Constructing a Duplicating PowerCollection for an entity that is not a Hotspot, which is not advisable!\nEntity: [{_owner}]");
+        }
+
+        public bool Serialize(Archive archive)
+        {
+            bool success = true;
+
+            uint numRecordsToSerialize = 0;
+
+            // In very old versions of the game (before archive version 15) power collections were serialized to persistent archives.
+            // We don't need a code path for persistent archives here like the client does because we don't have this kind of legacy data.
+            if (archive.IsPacking)
+            {
+                if (archive.IsReplication && archive.HasReplicationPolicy(AOINetworkPolicyValues.AOIChannelProximity))
+                {
+                    foreach (PowerCollectionRecord record in _powers.Values)
+                    {
+                        if (record.ShouldSerializeRecordForPacking(archive) == false)
+                            continue;
+
+                        if (!Verify.IsTrue(numRecordsToSerialize < MaxNumRecordsToSerialize))
+                            break;
+
+                        numRecordsToSerialize++;
+                    }
+
+                    success &= Serializer.Transfer(archive, ref numRecordsToSerialize);
+                }
+            }
+            else
+            {
+                if (archive.IsReplication && archive.HasReplicationPolicy(AOINetworkPolicyValues.AOIChannelProximity))
+                    success &= Serializer.Transfer(archive, ref numRecordsToSerialize);
+            }
+
+            if (archive.IsPacking)
+            {
+                if (!Verify.IsTrue(archive.IsReplication)) return false;
+
+                foreach (PowerCollectionRecord record in _powers.Values)
+                {
+                    if (record.ShouldSerializeRecordForPacking(archive))
+                    {
+                        success &= record.SerializeTo(archive);
+                        numRecordsToSerialize--;
+                    }
+                }
+
+                if (!Verify.IsTrue(numRecordsToSerialize == 0)) return false;
+            }
+            else
+            {
+                if (_powers.Count > 0)
+                {
+                    Verify.IsTrue(false, "When preparing to unpack a serialized PowerCollection, there was already data in the receiving _powers structure");
+                    _powers.Clear();
+                }
+
+                for (uint i = 0; i < numRecordsToSerialize; i++)
+                {
+                    PowerCollectionRecord record = new();
+                    success &= record.SerializeFrom(archive);
+                    // V10_NOTE: doesn't seem like targetEntityId is serialized
+                    _powers.Add((record.PowerPrototypeRef, 0), record);
+                }
+            }
+
+            return success;
+        }
+
+        public SortedDictionary<(PrototypeId, ulong), PowerCollectionRecord>.Enumerator GetEnumerator()
+        {
+            return _powers.GetEnumerator();
+        }
+
+        public Power GetPower(PrototypeId powerProtoRef, ulong targetEntityId = 0)
+        {
+            return GetPowerRecordByRef(powerProtoRef, targetEntityId)?.Power;
         }
 
         public bool ContainsPower(PrototypeId powerProtoRef, ulong targetEntityId)
@@ -161,6 +240,9 @@ namespace MHServerEmu.Games.Entities.PowerCollections
 
         private PowerCollectionRecord GetPowerRecordByRef(PrototypeId powerProtoRef, ulong targetEntityId)
         {
+            if (!Verify.IsTrue(DuplicatesPowers == false || targetEntityId != Entity.InvalidId, $"Invalid target ID specified when retrieving record from a DuplicatePowers power collection\n requested power hash: {powerProtoRef.GetName()}\n collection owner: {_owner}"))
+                return null;
+
             if (_powers.TryGetValue((powerProtoRef, targetEntityId), out PowerCollectionRecord record) == false)
                 return null;
 
