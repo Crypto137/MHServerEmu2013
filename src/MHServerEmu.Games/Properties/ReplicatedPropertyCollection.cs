@@ -11,8 +11,6 @@ namespace MHServerEmu.Games.Properties
 {
     public class ReplicatedPropertyCollection : PropertyCollection, IArchiveMessageHandler
     {
-        private static readonly Logger Logger = LogManager.CreateLogger();
-
         private IArchiveMessageDispatcher _messageDispatcher = null;
         private AOINetworkPolicyValues _interestPolicies;
         private ulong _replicationId = IArchiveMessageDispatcher.InvalidReplicationId;
@@ -24,15 +22,15 @@ namespace MHServerEmu.Games.Properties
 
         public bool Bind(IArchiveMessageDispatcher messageDispatcher, AOINetworkPolicyValues interestPolicies)
         {
-            if (messageDispatcher == null) return Logger.WarnReturn(false, "Bind(): messageDispatcher == null");
+            if (!Verify.IsNotNull(messageDispatcher)) return false;
 
             if (IsBound)
             {
                 // If already bound to the dispatcher we need, all good
-                if (_messageDispatcher == messageDispatcher)
-                    return true;
+                if (!Verify.IsTrue(_messageDispatcher == messageDispatcher, $"Already bound with replicationId {_replicationId} to {_messageDispatcher}"))
+                    return false;
 
-                return Logger.WarnReturn(false, $"Bind(): Already bound with replicationId {_replicationId} to {_messageDispatcher}");
+                return true;
             }
 
             _messageDispatcher = messageDispatcher;
@@ -84,20 +82,14 @@ namespace MHServerEmu.Games.Properties
         public override bool RemoveProperty(PropertyId id)
         {
             bool removed = base.RemoveProperty(id);
-
-            if (removed)
-                MarkPropertyRemoved(id);
-
+            if (removed) MarkPropertyRemoved(id);
             return removed;
         }
 
         protected override bool SetPropertyValue(PropertyId id, PropertyValue value, SetPropertyFlags flags = SetPropertyFlags.None)
         {
             bool changed = base.SetPropertyValue(id, value, flags);
-
-            if (changed)
-                MarkPropertyChanged(id, value, flags);
-
+            if (changed) MarkPropertyChanged(id, value, flags);
             return changed;
         }
 
@@ -111,7 +103,7 @@ namespace MHServerEmu.Games.Properties
             if (interestFilter == AOINetworkPolicyValues.AOIChannelNone) return;
 
             // Check if any there are any interested clients
-            List<PlayerConnection> interestedClientList = ListPool<PlayerConnection>.Instance.Get();
+            using var interestedClientListHandle = ListPool<PlayerConnection>.Instance.Get(out List<PlayerConnection> interestedClientList);
             if (_messageDispatcher.GetInterestedClients(interestedClientList, interestFilter))
             {
                 // Send update to interested
@@ -120,7 +112,7 @@ namespace MHServerEmu.Games.Properties
                 using Archive archive = new(ArchiveSerializeType.Replication, (ulong)_interestPolicies);
                 Serializer.Transfer(archive, ref id);
 
-                int rawFlags = 0;   // are these SetPropertyFlags?
+                int rawFlags = (int)flags;
                 Serializer.Transfer(archive, ref rawFlags);
 
                 byte dataType = (byte)propertyInfo.DataType;
@@ -154,8 +146,6 @@ namespace MHServerEmu.Games.Properties
 
                 _messageDispatcher.Game.NetworkManager.SendMessageToMultiple(interestedClientList, setPropertyMessage);
             }
-
-            ListPool<PlayerConnection>.Instance.Return(interestedClientList);
         }
 
         private void MarkPropertyRemoved(PropertyId id)
@@ -168,7 +158,7 @@ namespace MHServerEmu.Games.Properties
             if (interestFilter == AOINetworkPolicyValues.AOIChannelNone) return;
 
             // Check if any there are any interested clients
-            List<PlayerConnection> interestedClientList = ListPool<PlayerConnection>.Instance.Get();
+            using var interestedClientListHandle = ListPool<PlayerConnection>.Instance.Get(out List<PlayerConnection> interestedClientList);
             if (_messageDispatcher.GetInterestedClients(interestedClientList, interestFilter))
             {
                 // Send update to interested
@@ -184,8 +174,6 @@ namespace MHServerEmu.Games.Properties
 
                 _messageDispatcher.Game.NetworkManager.SendMessageToMultiple(interestedClientList, removePropertyMessage);
             }
-
-            ListPool<PlayerConnection>.Instance.Return(interestedClientList);
         }
     }
 }

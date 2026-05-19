@@ -1,10 +1,5 @@
 ﻿using MHServerEmu.Core.Helpers;
 using MHServerEmu.Core.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MHServerEmu.Games.GameData.Calligraphy
 {
@@ -62,6 +57,26 @@ namespace MHServerEmu.Games.GameData.Calligraphy
             position = Math.Clamp(position, MinPosition, MaxPosition);
             int index = position - MinPosition;
             return _values[index];
+        }
+
+        public bool GetAt(int position, out float value)
+        {
+            if (position < MinPosition)
+            {
+                value = _values[0];
+                Verify.IsTrue(false, $"Curve position ({position}) below min of ({MinPosition}) Curve: {this}");
+                return false;
+            }
+            else if (position > MaxPosition)
+            {
+                value = _values[MaxPosition - MinPosition];
+                Verify.IsTrue(false, $"Curve position ({position}) above max of ({MaxPosition}) Curve: {this}");
+                return false;
+            }
+
+            int index = position - MinPosition;
+            value = _values[index];
+            return true;
         }
 
         /// <summary>
