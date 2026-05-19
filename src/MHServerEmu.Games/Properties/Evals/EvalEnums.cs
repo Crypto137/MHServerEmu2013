@@ -86,6 +86,6 @@ namespace MHServerEmu.Games.Properties.Evals
         PropertyId,
         ProtoRefListPtr,
         ProtoRefVectorPtr,
-        ConditionCollectionPtr
+        ConditionCollectionPtr,
     }
 }
