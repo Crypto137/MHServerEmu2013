@@ -166,6 +166,8 @@ namespace MHServerEmu.Games.Network
         /// </summary>
         public override void ReceiveMessage(in MailboxMessage message)
         {
+            if (!Verify.IsNotNull(Player)) return;
+
             switch ((ClientToGameServerMessage)message.Id)
             {
                 // case ClientToGameServerMessage.NetMessagePlayerSystemMetrics:            OnPlayerSystemMetrics(message); break;
@@ -280,12 +282,12 @@ namespace MHServerEmu.Games.Network
             }
         }
 
-        private bool OnSyncTimeRequest(in MailboxMessage message)
+        private void OnSyncTimeRequest(in MailboxMessage message)
         {
             var syncTimeRequest = message.As<NetMessageSyncTimeRequest>();
-            if (syncTimeRequest == null) return Logger.WarnReturn(false, $"OnSyncTimeRequest(): Failed to retrieve message");
+            if (!Verify.IsNotNull(syncTimeRequest)) return;
 
-            var reply = NetMessageSyncTimeReply.CreateBuilder()
+            NetMessageSyncTimeReply reply = NetMessageSyncTimeReply.CreateBuilder()
                 .SetGameTimeClientSent(syncTimeRequest.GameTimeClientSent)
                 .SetGameTimeServerReceived(message.GameTimeReceived.Ticks / 10)
                 .SetGameTimeServerSent(Clock.GameTime.Ticks / 10)
@@ -299,21 +301,20 @@ namespace MHServerEmu.Games.Network
 
             SendMessage(reply);
             FlushMessages();    // Send the reply ASAP for more accurate timing
-            return true;
         }
 
-        private bool OnUpdateAvatarState(in MailboxMessage message)
+        private void OnUpdateAvatarState(in MailboxMessage message)
         {
             var updateAvatarState = message.As<NetMessageUpdateAvatarState>();
-            if (updateAvatarState == null) return Logger.WarnReturn(false, "OnUpdateAvatarState(): Failed to retrieve message");
+            if (!Verify.IsNotNull(updateAvatarState)) return;
 
             Avatar avatar = Player.CurrentAvatar;
             if (avatar == null || avatar.IsAliveInWorld == false)
-                return false;
+                return;
 
             ulong avatarEntityId = updateAvatarState.IdAvatar;
             if (avatarEntityId != avatar.Id)
-                return false;
+                return;
 
             Vector3 syncPosition = new(updateAvatarState.Position);
             Orientation syncOrientation = new(updateAvatarState.Orientation.X, updateAvatarState.Orientation.Y, updateAvatarState.Orientation.Z);
@@ -360,94 +361,76 @@ namespace MHServerEmu.Games.Network
             }
 
             // optional bool isTeleport - what do we do with this?
-
-            return true;
         }
 
-        private bool OnCellLoaded(in MailboxMessage message)
+        private void OnCellLoaded(in MailboxMessage message)
         {
             var cellLoaded = message.As<NetMessageCellLoaded>();
-            if (cellLoaded == null) return Logger.WarnReturn(false, "OnCellLoaded(): Failed to retrieve message");
+            if (!Verify.IsNotNull(cellLoaded)) return;
 
             Player.OnCellLoaded(cellLoaded.CellId, cellLoaded.RegionId);
-
-            return true;
         }
 
-        private bool OnAdminCommand(in MailboxMessage message)
+        private void OnAdminCommand(in MailboxMessage message)
         {
             var adminCommand = message.As<NetMessageAdminCommand>();
-            if (adminCommand == null) return Logger.WarnReturn(false, "OnAdminCommand(): Failed to retrieve message");
+            if (!Verify.IsNotNull(adminCommand)) return;
 
             Game.AdminCommandManager.OnAdminCommand(Player, adminCommand);
-
-            return true;
         }
 
-        private bool OnTryActivatePower(in MailboxMessage message)
+        private void OnTryActivatePower(in MailboxMessage message)
         {
             var tryActivatePower = message.As<NetMessageTryActivatePower>();
-            if (tryActivatePower == null) return Logger.WarnReturn(false, $"OnTryActivatePower(): Failed to retrieve message");
+            if (!Verify.IsNotNull(tryActivatePower)) return;
 
             // V10_TODO
-
-            return true;
         }
 
-        private bool OnPowerRelease(in MailboxMessage message)
+        private void OnPowerRelease(in MailboxMessage message)
         {
             var powerRelease = message.As<NetMessagePowerRelease>();
-            if (powerRelease == null) return Logger.WarnReturn(false, $"OnPowerRelease(): Failed to retrieve message");
+            if (!Verify.IsNotNull(powerRelease)) return;
 
             // V10_TODO
-
-            return true;
         }
 
-        private bool OnTryCancelPower(in MailboxMessage message)
+        private void OnTryCancelPower(in MailboxMessage message)
         {
             var tryCancelPower = message.As<NetMessageTryCancelPower>();
-            if (tryCancelPower == null) return Logger.WarnReturn(false, $"OnTryCancelPower(): Failed to retrieve message");
+            if (!Verify.IsNotNull(tryCancelPower)) return;
 
             // V10_TODO
-
-            return true;
         }
 
-        private bool OnTryCancelActivePower(in MailboxMessage message)
+        private void OnTryCancelActivePower(in MailboxMessage message)
         {
             var tryCancelActivePower = message.As<NetMessageTryCancelActivePower>();
-            if (tryCancelActivePower == null) return Logger.WarnReturn(false, $"OnTryCancelActivePower(): Failed to retrieve message");
+            if (!Verify.IsNotNull(tryCancelActivePower)) return;
 
             // V10_TODO
-
-            return true;
         }
 
-        private bool OnContinuousPowerUpdate(in MailboxMessage message)
+        private void OnContinuousPowerUpdate(in MailboxMessage message)
         {
             var continuousPowerUpdate = message.As<NetMessageContinuousPowerUpdateToServer>();
-            if (continuousPowerUpdate == null) return Logger.WarnReturn(false, $"OnContinuousPowerUpdate(): Failed to retrieve message");
+            if (!Verify.IsNotNull(continuousPowerUpdate)) return;
 
             // V10_TODO
-
-            return true;
         }
 
-        private bool OnCancelPendingAction(in MailboxMessage message)
+        private void OnCancelPendingAction(in MailboxMessage message)
         {
             var cancelPendingAction = message.As<NetMessageCancelPendingAction>();
-            if (cancelPendingAction == null) return Logger.WarnReturn(false, $"OnCancelPendingAction(): Failed to retrieve message");
+            if (!Verify.IsNotNull(cancelPendingAction)) return;
 
             // V10_TODO
-
-            return true;
         }
 
-        private bool OnPing(in MailboxMessage message)
+        private void OnPing(in MailboxMessage message)
         {
             var ping = message.As<NetMessagePing>();
-            if (ping == null) return Logger.WarnReturn(false, $"OnPing(): Failed to retrieve message");
+            if (!Verify.IsNotNull(ping)) return;
 
             // Copy request info
             var response = NetMessagePingResponse.CreateBuilder()
@@ -465,7 +448,6 @@ namespace MHServerEmu.Games.Network
 
             SendMessage(response.Build());
             FlushMessages();    // Send the reply ASAP for more accurate timing (NOTE: this is not accurate to our packet dumps, but gives better ping values)
-            return true;
         }
 
         private bool OnTryInventoryMove(in MailboxMessage message)
@@ -491,138 +473,122 @@ namespace MHServerEmu.Games.Network
             return true;
         }
 
-        private bool OnInventoryTrashItem(in MailboxMessage message)
+        private void OnInventoryTrashItem(in MailboxMessage message)
         {
             var inventoryTrashItem = message.As<NetMessageInventoryTrashItem>();
-            if (inventoryTrashItem == null) return Logger.WarnReturn(false, $"OnInventoryTrashItem(): Failed to retrieve message");
+            if (!Verify.IsNotNull(inventoryTrashItem)) return;
 
-            // Validate item
-            if (inventoryTrashItem.ItemId == Entity.InvalidId) return Logger.WarnReturn(false, "OnInventoryTrashItem(): itemId == Entity.InvalidId");
+            ulong itemId = inventoryTrashItem.ItemId;
+            if (!Verify.IsTrue(itemId != Entity.InvalidId)) return;
 
-            Item item = Game.EntityManager.GetEntity<Item>(inventoryTrashItem.ItemId);
-            if (item == null) return Logger.WarnReturn(false, "OnInventoryTrashItem(): item == null");
+            Item item = Game.EntityManager.GetEntity<Item>(itemId);
+            if (!Verify.IsNotNull(item)) return;
 
-            // Trash it
-            return Player.TrashItem(item);
+            Player.TrashItem(item);
         }
 
-        private bool OnUseInteractableObject(in MailboxMessage message)
+        private void OnUseInteractableObject(in MailboxMessage message)
         {
             var useInteractableObject = message.As<NetMessageUseInteractableObject>();
-            if (useInteractableObject == null) return Logger.WarnReturn(false, "OnUseInteractableObject(): Failed to retrieve message");
+            if (!Verify.IsNotNull(useInteractableObject)) return;
 
-            Avatar avatar = Player?.CurrentAvatar;
-            if (avatar == null) return Logger.WarnReturn(false, "OnUseInteractableObject(): avatar == null");
+            Avatar avatar = Player.CurrentAvatar;
+            if (!Verify.IsNotNull(avatar)) return;
 
             avatar.UseInteractableObject(useInteractableObject.IdTarget, (PrototypeId)useInteractableObject.MissionPrototypeRef);
-            return true;
         }
 
-        private bool OnUseWaypoint(in MailboxMessage message)
+        private void OnUseWaypoint(in MailboxMessage message)
         {
             var useWaypoint = message.As<NetMessageUseWaypoint>();
-            if (useWaypoint == null) return Logger.WarnReturn(false, "OnUseWaypoint(): Failed to retrieve message");
+            if (!Verify.IsNotNull(useWaypoint)) return;
 
             WaypointPrototype waypointProto = GameDatabase.GetPrototype<WaypointPrototype>((PrototypeId)useWaypoint.WaypointDataRef);
-            if (waypointProto == null) return Logger.WarnReturn(false, "OnUseWaypont(): waypointProto == null");
+            if (!Verify.IsNotNull(waypointProto)) return;
 
             if (MoveToTarget(waypointProto.Destination) == false)
-            {
                 SendSystemChatMessage($"Waypoint destination {waypointProto.Destination.GetName()} is not available.");
-                return false;
-            }
-
-            return true;
         }
 
-        private bool OnSwitchAvatar(in MailboxMessage message)
+        private void OnSwitchAvatar(in MailboxMessage message)
         {
             var switchAvatar = message.As<NetMessageSwitchAvatar>();
-            if (switchAvatar == null) return Logger.WarnReturn(false, "OnSwitchAvatar(): Failed to retrieve message");
+            if (!Verify.IsNotNull(switchAvatar)) return;
 
             Avatar avatar = Game.EntityManager.GetEntity<Avatar>(switchAvatar.AvatarId);
-            if (avatar == null) return Logger.WarnReturn(false, "OnSwitchAvatar(): avatar == null");
+            if (!Verify.IsNotNull(avatar)) return;
 
-            if (avatar.GetOwnerOfType<Player>() != Player) return Logger.WarnReturn(false, "OnSwitchAvatar(): avatar.GetOwnerOfType<Player>() != Player");
+            if (!Verify.IsTrue(avatar.GetOwnerOfType<Player>() == Player)) return;
 
             Player.SwitchAvatar(avatar.PrototypeDataRef);
-            return true;
         }
 
-        private bool OnAssignAbility(in MailboxMessage message)
+        private void OnAssignAbility(in MailboxMessage message)
         {
             var assignAbility = message.As<NetMessageAssignAbility>();
-            if (assignAbility == null) return Logger.WarnReturn(false, "OnAssignAbility(): Failed to retrieve message");
+            if (!Verify.IsNotNull(assignAbility)) return;
 
             Avatar avatar = Game.EntityManager.GetEntity<Avatar>(assignAbility.AvatarId);
-            if (avatar == null) return Logger.WarnReturn(false, "OnAssignAbility(): avatar == null");
+            if (!Verify.IsNotNull(avatar)) return;
 
-            Player owner = avatar.GetOwnerOfType<Player>();
-            if (owner != Player)
-                return Logger.WarnReturn(false, $"OnAssignAbility(): Player [{Player}] is attempting to slot ability for avatar [{avatar}] that belongs to another player");
+            if (!Verify.IsTrue(avatar.GetOwnerOfType<Player>() == Player, $"Player [{Player}] is attempting to slot ability for avatar [{avatar}] that belongs to another player"))
+                return;
 
             avatar.SlotAbility((PrototypeId)assignAbility.PrototypeRefId, (AbilitySlot)assignAbility.SlotNumber, false, true);
-            return true;
         }
 
-        private bool OnUnassignAbility(in MailboxMessage message)
+        private void OnUnassignAbility(in MailboxMessage message)
         {
             var unassignAbility = message.As<NetMessageUnassignAbility>();
-            if (unassignAbility == null) return Logger.WarnReturn(false, "OnUnassignAbility(): Failed to retrieve message");
+            if (!Verify.IsNotNull(unassignAbility)) return;
 
             Avatar avatar = Game.EntityManager.GetEntity<Avatar>(unassignAbility.AvatarId);
-            if (avatar == null) return Logger.WarnReturn(false, "OnUnassignAbility(): avatar == null");
+            if (!Verify.IsNotNull(avatar)) return;
 
-            Player owner = avatar.GetOwnerOfType<Player>();
-            if (owner != Player)
-                return Logger.WarnReturn(false, $"OnUnassignAbility(): Player [{Player}] is attempting to unslot ability for avatar [{avatar}] that belongs to another player");
+            if (!Verify.IsTrue(avatar.GetOwnerOfType<Player>() == Player, $"Player [{Player}] is attempting to unslot ability for avatar [{avatar}] that belongs to another player"))
+                return;
 
             avatar.UnslotAbility((AbilitySlot)unassignAbility.SlotNumber, true);
-            return true;
         }
 
-        private bool OnSwapAbilities(in MailboxMessage message)
+        private void OnSwapAbilities(in MailboxMessage message)
         {
             var swapAbilities = message.As<NetMessageSwapAbilities>();
-            if (swapAbilities == null) return Logger.WarnReturn(false, "OnSwapAbilities(): Failed to retrieve message");
+            if (!Verify.IsNotNull(swapAbilities)) return;
 
             Avatar avatar = Game.EntityManager.GetEntity<Avatar>(swapAbilities.AvatarId);
-            if (avatar == null) return Logger.WarnReturn(false, "OnSwapAbilities(): avatar == null");
+            if (!Verify.IsNotNull(avatar)) return;
 
-            Player owner = avatar.GetOwnerOfType<Player>();
-            if (owner != Player)
-                return Logger.WarnReturn(false, $"OnSwapAbilities(): Player [{Player}] is attempting to swap abilities for avatar [{avatar}] that belongs to another player");
+            if (!Verify.IsTrue(avatar.GetOwnerOfType<Player>() == Player, $"Player [{Player}] is attempting to swap abilities for avatar [{avatar}] that belongs to another player"))
+                return;
 
             avatar.SwapAbilities((AbilitySlot)swapAbilities.SlotNumberA, (AbilitySlot)swapAbilities.SlotNumberB, true);
-            return true;
         }
 
-        private bool OnRequestDeathRelease(in MailboxMessage message)
+        private void OnRequestDeathRelease(in MailboxMessage message)
         {
             var requestDeathRelease = message.As<NetMessageRequestDeathRelease>();
-            if (requestDeathRelease == null) return Logger.WarnReturn(false, "OnRequestDeathRelease(): Failed to retrieve message");
+            if (!Verify.IsNotNull(requestDeathRelease)) return;
 
             PrototypeId respawnTarget = Player.CurrentAvatar.Region.Prototype.RespawnTarget;
             MoveToTarget(respawnTarget);
-            return true;
         }
 
-        private bool OnReturnToHub(in MailboxMessage message)
+        private void OnReturnToHub(in MailboxMessage message)
         {
             var returnToHub = message.As<NetMessageReturnToHub>();
-            if (returnToHub == null) return Logger.WarnReturn(false, "OnReturnToHub(): Failed to retrieve message");
+            if (!Verify.IsNotNull(returnToHub)) return;
 
             MoveToTarget((PrototypeId)15718422430560164872);
-            return true;
         }
 
-        private bool OnChat(in MailboxMessage message)
+        private void OnChat(in MailboxMessage message)
         {
             var chat = message.As<NetMessageChat>();
-            if (chat == null) return Logger.WarnReturn(false, "OnChat(): Failed to retrieve message");
+            if (!Verify.IsNotNull(chat)) return;
 
             if (CommandManagerMini.Instance.TryParse(chat.TheMessage.Body, this))
-                return true;
+                return;
 
             Logger.Info($"[{chat.RoomType}] {chat.TheMessage.Body}");
 
@@ -635,71 +601,64 @@ namespace MHServerEmu.Games.Network
 
             foreach (PlayerConnection playerConnection in Game.NetworkManager)
                 playerConnection.FrontendClient.SendMessage(2, chatMessage);
-
-            return true;
         }
 
-        private bool OnGetCatalog(in MailboxMessage message)
+        private void OnGetCatalog(in MailboxMessage message)
         {
             var getCatalog = message.As<NetMessageGetCatalog>();
-            if (getCatalog == null) return Logger.WarnReturn(false, $"OnGetCatalog(): Failed to retrieve message");
+            if (!Verify.IsNotNull(getCatalog)) return;
 
-            return CatalogManager.Instance.OnGetCatalog(Player, getCatalog);
+            CatalogManager.Instance.OnGetCatalog(Player, getCatalog);
         }
 
-        private bool OnGetCurrencyBalance(in MailboxMessage message)
+        private void OnGetCurrencyBalance(in MailboxMessage message)
         {
             var getCurrencyBalance = message.As<NetMessageGetCurrencyBalance>();
-            if (getCurrencyBalance == null) return Logger.WarnReturn(false, $"OnGetCurrencyBalance(): Failed to retrieve message");
+            if (!Verify.IsNotNull(getCurrencyBalance)) return;
 
-            return CatalogManager.Instance.OnGetCurrencyBalance(Player);
+            CatalogManager.Instance.OnGetCurrencyBalance(Player);
         }
 
-        private bool OnBuyItemFromCatalog(in MailboxMessage message)
+        private void OnBuyItemFromCatalog(in MailboxMessage message)
         {
             var buyItemFromCatalog = message.As<NetMessageBuyItemFromCatalog>();
-            if (buyItemFromCatalog == null) return Logger.WarnReturn(false, $"OnBuyItemFromCatalog(): Failed to retrieve message");
+            if (!Verify.IsNotNull(buyItemFromCatalog)) return;
 
-            return CatalogManager.Instance.OnBuyItemFromCatalog(Player, buyItemFromCatalog);
+            CatalogManager.Instance.OnBuyItemFromCatalog(Player, buyItemFromCatalog);
         }
 
-        private bool OnCreateNewPlayerWithSelectedStartingAvatar(in MailboxMessage message)
+        private void OnCreateNewPlayerWithSelectedStartingAvatar(in MailboxMessage message)
         {
             var createNewPlayer = message.As<NetMessageCreateNewPlayerWithSelectedStartingAvatar>();
-            if (createNewPlayer == null) return Logger.WarnReturn(false, "OnCreateNewPlayerWithSelectedStartingAvatar(): Failed to retrieve message");
+            if (!Verify.IsNotNull(createNewPlayer)) return;
 
             Game.NetworkManager.SetPlayerConnectionPending(this);
 
             Avatar avatar = Player.GetAvatar((PrototypeId)createNewPlayer.StartingAvatarPrototypeId);
             Inventory avatarInPlay = Player.GetInventory(InventoryConvenienceLabel.AvatarInPlay);
             avatar.ChangeInventoryLocation(avatarInPlay);
-
-            return true;
         }
 
-        private bool OnGracefulDisconnect(in MailboxMessage message)
+        private void OnGracefulDisconnect(in MailboxMessage message)
         {
+            Logger.Trace($"OnGracefulDisconnect(): Player=[{Player}]");
             SendMessage(NetMessageGracefulDisconnectAck.DefaultInstance);
-            return true;
         }
 
-        private bool OnSetDialogTarget(in MailboxMessage message)
+        private void OnSetDialogTarget(in MailboxMessage message)
         {
             var setDialogTarget = message.As<NetMessageSetDialogTarget>();
-            if (setDialogTarget == null) return Logger.WarnReturn(false, $"OnSetDialogTarget(): Failed to retrieve message");
+            if (!Verify.IsNotNull(setDialogTarget)) return;
 
             // V10_TODO
-
-            return true;
         }
 
-        private bool OnSetTipSeen(in MailboxMessage message)
+        private void OnSetTipSeen(in MailboxMessage message)
         {
             var setTipSeen = message.As<NetMessageSetTipSeen>();
-            if (setTipSeen == null) return Logger.WarnReturn(false, "OnSetTipSeen(): Failed to retrieve message");
+            if (!Verify.IsNotNull(setTipSeen)) return;
 
             Player.SetTipSeen((PrototypeId)setTipSeen.TipDataRefId);
-            return true;
         }
 
         #endregion

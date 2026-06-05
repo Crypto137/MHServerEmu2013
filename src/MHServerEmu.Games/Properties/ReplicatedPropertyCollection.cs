@@ -20,32 +20,25 @@ namespace MHServerEmu.Games.Properties
 
         public ReplicatedPropertyCollection() { }
 
-        public bool Bind(IArchiveMessageDispatcher messageDispatcher, AOINetworkPolicyValues interestPolicies)
+        public void Bind(IArchiveMessageDispatcher messageDispatcher, AOINetworkPolicyValues interestPolicies)
         {
-            if (!Verify.IsNotNull(messageDispatcher)) return false;
+            if (!Verify.IsNotNull(messageDispatcher)) return;
 
             if (IsBound)
             {
-                // If already bound to the dispatcher we need, all good
-                if (!Verify.IsTrue(_messageDispatcher == messageDispatcher, $"Already bound with replicationId {_replicationId} to {_messageDispatcher}"))
-                    return false;
-
-                return true;
+                Verify.IsTrue(_messageDispatcher == messageDispatcher, $"Already bound with replicationId {_replicationId} to {_messageDispatcher}");
+                return;
             }
 
             _messageDispatcher = messageDispatcher;
             _interestPolicies = interestPolicies;
-            _replicationId = messageDispatcher.RegisterMessageHandler(this, ref _replicationId);    // pass repId field by ref so that we don't have to expose a setter
-
-            return true;
+            _replicationId = messageDispatcher.RegisterMessageHandler(this, ref _replicationId);
         }
 
         public void Unbind()
         {
             _messageDispatcher?.UnregisterMessageHandler(this);
             _messageDispatcher = null;
-
-            _interestPolicies = AOINetworkPolicyValues.AOIChannelNone;
             _replicationId = IArchiveMessageDispatcher.InvalidReplicationId;
         }
 
@@ -54,6 +47,7 @@ namespace MHServerEmu.Games.Properties
             base.ResetForPool();
 
             Unbind();
+            _interestPolicies = AOINetworkPolicyValues.AOIChannelNone;
         }
 
         public override void Dispose()
