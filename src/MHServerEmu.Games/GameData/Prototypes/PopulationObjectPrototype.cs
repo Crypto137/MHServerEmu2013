@@ -32,10 +32,10 @@ namespace MHServerEmu.Games.GameData.Prototypes
         public PrototypeId[] DifficultyRestriction { get; protected set; }
         public TriBool Respawn { get; protected set; }
         public float LeashDistance { get; protected set; }
-        public float RespawnCooldown { get; protected set; }
-        public int Weight { get; protected set; }
-        public int MaxPerCell { get; protected set; }
-        public int MaxPerArea { get; protected set; }
+        public double RespawnCooldown { get; protected set; }
+        public short Weight { get; protected set; }
+        public short MaxPerCell { get; protected set; }
+        public short MaxPerArea { get; protected set; }
         public BehaviorInterruptType InitialBehaviorInterruptOverride { get; protected set; }
         public FacingMethod Facing { get; protected set; }
         public AreaDepth SpawnDepth { get; protected set; }
@@ -46,7 +46,7 @@ namespace MHServerEmu.Games.GameData.Prototypes
         public bool IgnoreBlackout { get; protected set; }
         public bool UseMarkerOrientation { get; protected set; }
         public bool AllowCrossMissionHostility { get; protected set; }
-        public int EnemyBoostCountOverride { get; protected set; }
+        public short EnemyBoostCountOverride { get; protected set; }
     }
 
     public class PopulationEntityPrototype : PopulationObjectPrototype
