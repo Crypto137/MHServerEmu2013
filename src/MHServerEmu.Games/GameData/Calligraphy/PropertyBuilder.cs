@@ -1,4 +1,5 @@
-﻿using MHServerEmu.Core.Logging;
+﻿using MHServerEmu.Core.Collections;
+using MHServerEmu.Core.Logging;
 using MHServerEmu.Games.Properties;
 
 namespace MHServerEmu.Games.GameData.Calligraphy
@@ -6,17 +7,15 @@ namespace MHServerEmu.Games.GameData.Calligraphy
     /// <summary>
     /// Reconstructs properties from serialized prototype field groups.
     /// </summary>
-    public class PropertyBuilder
+    public ref struct PropertyBuilder
     {
-        private static readonly Logger Logger = LogManager.CreateLogger();
+        private readonly PropertyEnum _propertyEnum;
+        private readonly PropertyInfoTable _propertyInfoTable;
+        private readonly bool _gatheringPropertyInfo;
 
-        private PropertyEnum _propertyEnum;
-        private PropertyInfoTable _propertyInfoTable;
-        private bool _isInitializing;
+        private InlineArray4<ParamInfo> _paramInfos;
+        private InlineArray4<PropertyParam> _paramValues;
 
-        private ParamInfo[] _paramInfos = new ParamInfo[Property.MaxParamCount];
-
-        public PropertyParam[] ParamValues { get; private set; } = new PropertyParam[Property.MaxParamCount];
         public int ParamCount { get; private set; }
 
         public PropertyValue PropertyValue { get; private set; }
@@ -27,18 +26,20 @@ namespace MHServerEmu.Games.GameData.Calligraphy
 
         public byte ParamsSetMask { get; private set; } = 0;
 
-        public PropertyBuilder(PropertyEnum propertyEnum, PropertyInfoTable propertyInfoTable, bool isInitializing)
+        public PropertyBuilder(PropertyEnum propertyEnum, PropertyInfoTable propertyInfoTable, bool gatheringPropertyInfo)
         {
             _propertyEnum = propertyEnum;
             _propertyInfoTable = propertyInfoTable;
-            _isInitializing = isInitializing;
+            _gatheringPropertyInfo = gatheringPropertyInfo;
 
-            if (isInitializing == false)
+            ((Span<ParamInfo>)_paramInfos).Fill(new());
+
+            if (gatheringPropertyInfo == false)
             {
                 PropertyInfo info = propertyInfoTable.LookupPropertyInfo(propertyEnum);
                 PropertyValue = info.DefaultValue;
                 ParamCount = info.ParamCount;
-                Array.Copy(info.DefaultParamValues, ParamValues, ParamValues.Length);
+                info.DefaultParamValues.CopyTo(_paramValues);
             }
         }
 
@@ -47,19 +48,21 @@ namespace MHServerEmu.Games.GameData.Calligraphy
             switch (ParamCount)
             {
                 case 0: return new(_propertyEnum);
-                case 1: return new(_propertyEnum, ParamValues[0]);
-                case 2: return new(_propertyEnum, ParamValues[0], ParamValues[1]);
-                case 3: return new(_propertyEnum, ParamValues[0], ParamValues[1], ParamValues[2]);
-                case 4: return new(_propertyEnum, ParamValues[0], ParamValues[1], ParamValues[2], ParamValues[3]);
-                default: return Logger.WarnReturn<PropertyId>(new(), $"Invalid property param count: {ParamCount}");
+                case 1: return new(_propertyEnum, _paramValues[0]);
+                case 2: return new(_propertyEnum, _paramValues[0], _paramValues[1]);
+                case 3: return new(_propertyEnum, _paramValues[0], _paramValues[1], _paramValues[2]);
+                case 4: return new(_propertyEnum, _paramValues[0], _paramValues[1], _paramValues[2], _paramValues[3]);
+                default: return new();
             }
         }
 
-        public bool SetPropertyInfo()
+        public void SetPropertyInfo()
         {
-            if (_isInitializing == false) return false;
+            if (_gatheringPropertyInfo == false)
+                return;
+
             PropertyInfo info = _propertyInfoTable.LookupPropertyInfo(_propertyEnum);
-            if (info.IsFullyLoaded) return Logger.WarnReturn(false, "PropertyInfo is already loaded");
+            if (!Verify.IsTrue(info.IsFullyLoaded == false)) return;
 
             // V10_NOTE: Pre-BUE versions use a fixed bit budget for integer params (12 bits).
             const int MaxIntegerParamValue = (1 << 12) - 1;
@@ -80,9 +83,8 @@ namespace MHServerEmu.Games.GameData.Calligraphy
                 }
             }
 
-            info.SetPropertyInfo(PropertyValue, ParamCount, ParamValues);
+            info.SetPropertyInfo(PropertyValue, ParamCount, _paramValues);
             info.DefaultCurveIndex = CurveIndex;
-            return true;
         }
 
         public bool SetValue(ulong value)
@@ -94,9 +96,12 @@ namespace MHServerEmu.Games.GameData.Calligraphy
 
         public bool SetCurveIndex(PrototypeId curveIndexDataRef)
         {
-            if (curveIndexDataRef == PrototypeId.Invalid) return false;
+            if (curveIndexDataRef == PrototypeId.Invalid)
+                return false;
+
             PropertyEnum curvePropertyEnum = _propertyInfoTable.GetPropertyEnumFromPrototype(curveIndexDataRef);
-            if (curvePropertyEnum == PropertyEnum.Invalid) return false;
+            if (curvePropertyEnum == PropertyEnum.Invalid)
+                return false;
 
             CurveIndex = new(curvePropertyEnum);
             IsCurveIndexSet = true;
@@ -105,7 +110,7 @@ namespace MHServerEmu.Games.GameData.Calligraphy
 
         public bool SetIntegerParam(int paramIndex, long field)
         {
-            if (_isInitializing)
+            if (_gatheringPropertyInfo)
             {
                 _paramInfos[paramIndex].Type = PropertyParamType.Integer;
                 // Integer params have no subtypes
@@ -116,36 +121,33 @@ namespace MHServerEmu.Games.GameData.Calligraphy
 
         public bool SetAssetParam(int paramIndex, AssetId field)
         {
-            var assetDirectory = GameDatabase.DataDirectory.AssetDirectory;
+            AssetDirectory assetDirectory = GameDatabase.DataDirectory.AssetDirectory;
 
-            if (_isInitializing)
+            if (_gatheringPropertyInfo)
             {
-                if (field == AssetId.Invalid)
-                    Logger.ErrorReturn(false, $"Asset param for default prototype is invalid");
+                if (!Verify.IsTrue(field != AssetId.Invalid)) return false;
 
-                AssetTypeId assetTypeId = assetDirectory.GetAssetTypeRef(field);
-
-                if (assetTypeId == AssetTypeId.Invalid)
-                    Logger.ErrorReturn(false, $"Failed to find an asset type that asset id {field} belongs to");
+                AssetTypeId assetTypeRef = assetDirectory.GetAssetTypeRef(field);
+                if (!Verify.IsTrue(assetTypeRef != AssetTypeId.Invalid)) return false;
 
                 _paramInfos[paramIndex].Type = PropertyParamType.Asset;
-                _paramInfos[paramIndex].SubtypeDataRef = (ulong)assetTypeId;
+                _paramInfos[paramIndex].SubtypeDataRef = (ulong)assetTypeRef;
             }
 
-            var assetEnum = (PropertyParam)assetDirectory.GetEnumValue(field);
+            PropertyParam assetEnum = (PropertyParam)assetDirectory.GetEnumValue(field);
             return SetParam(paramIndex, assetEnum);
         }
 
         public bool SetPrototypeParam(int paramIndex, PrototypeId field)
         {
-            BlueprintId blueprintRef = BlueprintId.Invalid;
+            BlueprintId blueprintRef;
 
-            if (_isInitializing)
+            if (_gatheringPropertyInfo)
             {
-                if (field == PrototypeId.Invalid)
-                    Logger.ErrorReturn(false, $"Prototype param for default prototype is invalid");
+                if (!Verify.IsTrue(field != PrototypeId.Invalid)) return false;
 
                 blueprintRef = GameDatabase.DataDirectory.GetPrototypeBlueprintDataRef(field);
+
                 _paramInfos[paramIndex].Type = PropertyParamType.Prototype;
                 _paramInfos[paramIndex].SubtypeDataRef = (ulong)blueprintRef;
             }
@@ -154,16 +156,15 @@ namespace MHServerEmu.Games.GameData.Calligraphy
                 blueprintRef = GameDatabase.PropertyInfoTable.LookupPropertyInfo(_propertyEnum).GetParamPrototypeBlueprint(paramIndex);
             }
 
-            var prototypeEnum = (PropertyParam)GameDatabase.DataDirectory.GetPrototypeEnumValue(field, blueprintRef);
+            if (!Verify.IsTrue(blueprintRef != BlueprintId.Invalid)) return false;
+
+            PropertyParam prototypeEnum = (PropertyParam)GameDatabase.DataDirectory.GetPrototypeEnumValue(field, blueprintRef);
             return SetParam(paramIndex, prototypeEnum);
         }
 
         private bool SetParam(int paramIndex, PropertyParam paramValue)
         {
-            if (paramIndex >= Property.MaxParamCount)
-                throw new ArgumentException($"paramIndex is out of range (max: {Property.MaxParamCount}).");
-
-            ParamValues[paramIndex] = paramValue;
+            _paramValues[paramIndex] = paramValue;
             ParamCount = Math.Max(ParamCount, paramIndex + 1);
             ParamsSetMask |= (byte)(1 << paramIndex);
 
@@ -172,8 +173,8 @@ namespace MHServerEmu.Games.GameData.Calligraphy
 
         private struct ParamInfo
         {
-            public PropertyParamType Type { get; set; }
-            public ulong SubtypeDataRef { get; set; }
+            public PropertyParamType Type;
+            public ulong SubtypeDataRef;
 
             public ParamInfo()
             {

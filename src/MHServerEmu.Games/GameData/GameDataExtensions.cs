@@ -1,4 +1,5 @@
-﻿using MHServerEmu.Games.GameData.Calligraphy;
+﻿using MHServerEmu.Core.Extensions;
+using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.GameData.Prototypes;
 
 namespace MHServerEmu.Games.GameData
@@ -35,7 +36,7 @@ namespace MHServerEmu.Games.GameData
         /// <summary>
         /// Returns the <typeparamref name="T"/> that this <see cref="PrototypeId"/> refers to.
         /// </summary>
-        public static T As<T>(this PrototypeId prototypeId) where T : Prototype
+        public static T As<T>(this PrototypeId prototypeId) where T: Prototype
         {
             return GameDatabase.GetPrototype<T>(prototypeId);
         }
@@ -86,6 +87,26 @@ namespace MHServerEmu.Games.GameData
         public static string GetNameFormatted(this PrototypeId prototypeId)
         {
             return GameDatabase.GetFormattedPrototypeName(prototypeId);
+        }
+
+        /// <summary>
+        /// Returns <see langword="true"/> if this <see cref="PrototypeId"/> array shares any elements with another one.
+        /// </summary>
+        public static bool ShareElement(this PrototypeId[] protoRefs, PrototypeId[] otherProtoRefs)
+        {
+            if (protoRefs.IsNullOrEmpty() || otherProtoRefs.IsNullOrEmpty())
+                return false;
+
+            foreach (PrototypeId protoRef in protoRefs)
+            {
+                foreach (PrototypeId otherProtoRef in otherProtoRefs)
+                {
+                    if (protoRef == otherProtoRef)
+                        return true;
+                }
+            }
+
+            return false;
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using MHServerEmu.Games.GameData.Prototypes;
 
-namespace MHServerEmu.Games.GameData
+namespace MHServerEmu.Games.GameData.Calligraphy
 {
     /// <summary>
     /// A <see cref="List{T}"/> of <see cref="PrototypeMixinListItem"/>.
@@ -13,7 +13,7 @@ namespace MHServerEmu.Games.GameData
     public class PrototypeMixinListItem
     {
         public Prototype Prototype { get; set; }
-        public BlueprintId BlueprintId { get; set; }
+        public BlueprintId BlueprintRef { get; set; }
         public byte BlueprintCopyNum { get; set; }
     }
 }

@@ -5,46 +5,44 @@ namespace MHServerEmu.Games.GameData.Prototypes.Markers
 {
     public class EntityMarkerPrototype : MarkerPrototype
     {
-        private static readonly Logger Logger = LogManager.CreateLogger();
-
-        public PrototypeGuid EntityGuid { get; }
-        public string LastKnownEntityName { get; }
-        public PrototypeGuid Modifier1Guid { get; }
-        // public string Modifier1Text { get; } // has eFlagDontCook set
-        public PrototypeGuid Modifier2Guid { get; }
-        // public string Modifier2Text { get; } // has eFlagDontCook set
-        public PrototypeGuid Modifier3Guid { get; }
-        // public string Modifier3Text { get; } // has eFlagDontCook set
-        public int EncounterSpawnPhase { get; }
-        public bool OverrideSnapToFloor { get; }
-        public bool OverrideSnapToFloorValue { get; }
+        public PrototypeGuid EntityGuid { get; protected set; }
+        public string LastKnownEntityName { get; protected set; }
+        public PrototypeGuid Modifier1Guid { get; protected set; }
+        public string Modifier1Text { get; protected set; } // eFlagDontCook
+        public PrototypeGuid Modifier2Guid { get; protected set; }
+        public string Modifier2Text { get; protected set; } // eFlagDontCook
+        public PrototypeGuid Modifier3Guid { get; protected set; }
+        public string Modifier3Text { get; protected set; } // eFlagDontCook
+        public int EncounterSpawnPhase { get; protected set;}
+        public bool OverrideSnapToFloor { get; protected set; }
+        public bool OverrideSnapToFloorValue { get; protected set; }
         // V10_NOTE: No FilterGuid or LastKnownFilterName in 1.10
 
-        public EntityMarkerPrototype(BinaryReader reader)
+        //---
+
+        public override void Deserialize(BinaryReader reader)
         {
             EntityGuid = (PrototypeGuid)reader.ReadUInt64();
             LastKnownEntityName = reader.ReadFixedString32();
             Modifier1Guid = (PrototypeGuid)reader.ReadUInt64();
-            // eFlagDontCook Modifier1Text = reader.ReadFixedString32();
+            // Modifier1Text = reader.ReadFixedString32();
             Modifier2Guid = (PrototypeGuid)reader.ReadUInt64();
-            // eFlagDontCook Modifier2Text = reader.ReadFixedString32();
+            // Modifier2Text = reader.ReadFixedString32();
             Modifier3Guid = (PrototypeGuid)reader.ReadUInt64();
-            // eFlagDontCook Modifier3Text = reader.ReadFixedString32();
+            // Modifier3Text = reader.ReadFixedString32();
             EncounterSpawnPhase = reader.ReadInt32();
-            OverrideSnapToFloor = reader.ReadByte() > 0;
-            OverrideSnapToFloorValue = reader.ReadByte() > 0;
+            OverrideSnapToFloor = reader.ReadBoolean();
+            OverrideSnapToFloorValue = reader.ReadBoolean();
 
-            ReadMarker(reader);
+            base.Deserialize(reader);
         }
 
         public T GetMarkedPrototype<T>() where T : Prototype
         {
             PrototypeId dataRef = GameDatabase.GetDataRefByPrototypeGuid(EntityGuid);
-            if (dataRef == 0)
-            {
-                Logger.Warn($"Unable to get a data ref from MarkerEntityPrototype. Prototype: {ToString()}.");
-                return default;
-            }
+            if (!Verify.IsTrue(dataRef != PrototypeId.Invalid, $"Unable to get a data ref from MarkerEntityPrototype. Prototype: {this}."))
+                return null;
+
             return GameDatabase.GetPrototype<Prototype>(dataRef) as T;
         }
     }

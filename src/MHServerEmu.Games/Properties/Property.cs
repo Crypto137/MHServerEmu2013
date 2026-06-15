@@ -1,7 +1,6 @@
 ﻿using MHServerEmu.Core.Logging;
-using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.GameData;
-using MHServerEmu.Games.GameData.Calligraphy.Attributes;
+using MHServerEmu.Games.GameData.Calligraphy;
 
 namespace MHServerEmu.Games.Properties
 {

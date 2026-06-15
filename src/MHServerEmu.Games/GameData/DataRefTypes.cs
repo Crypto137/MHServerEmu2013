@@ -16,7 +16,7 @@
     // Generation algorithm currently unknown
     public enum AssetGuid : ulong { Invalid = 0 }
     public enum AssetTypeGuid : ulong { Invalid = 0 }
-    public enum CurveGuid : ulong { Invalid = 0 }        // CurveGuid doesn't seem to be used anywhere at all
+    public enum CurveGuid : ulong { Invalid = 0}        // CurveGuid doesn't seem to be used anywhere at all
     public enum BlueprintGuid : ulong { Invalid = 0 }   // Unlike id, this is not the same as prototype GUID
     public enum PrototypeGuid : ulong { Invalid = 0 }
 }

@@ -1,75 +1,82 @@
 ﻿using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.VectorMath;
+using MHServerEmu.Games.GameData.Resources;
 using MHServerEmu.Games.Navi;
 
 namespace MHServerEmu.Games.GameData.Prototypes
 {
-    public class NaviPatchSourcePrototype : Prototype
+    public class NaviPatchSourcePrototype : Prototype, IBinaryResource
     {
-        // PatchFragments "Skipping writing field %s in class %s because it has eFlagDontCook set"
-        public uint NaviPatchCrc { get; }
-        public NaviPatchPrototype NaviPatch { get; }
-        public NaviPatchPrototype PropPatch { get; }
-        public float PlayableArea { get; }
-        public float SpawnableArea { get; }
+        public NaviPatchFragmentPrototype[] PatchFragments { get; protected set; }  // eFlagDontCook
+        public int NaviPatchCRC { get; protected set; }
+        public NaviPatchPrototype NaviPatch { get; protected set; } = new();
+        public NaviPatchPrototype PropPatch { get; protected set; } = new();
+        public float PlayableArea { get; protected set; }
+        public float SpawnableArea { get; protected set; }
 
-        public NaviPatchSourcePrototype(BinaryReader reader)
+        //---
+
+        public void Deserialize(BinaryReader reader)
         {
-            NaviPatchCrc = reader.ReadUInt32();
-            NaviPatch = new(reader);
-            PropPatch = new(reader);
+            // PatchFragments = BinaryResourceSerializer.ReadPrototypeContainer<NaviPatchFragmentPrototype>(reader);
+            NaviPatchCRC = reader.ReadInt32();
+            NaviPatch.Deserialize(reader);
+            PropPatch.Deserialize(reader);
             PlayableArea = reader.ReadSingle();
             SpawnableArea = reader.ReadSingle();
         }
     }
 
-    public class NaviPatchPrototype : Prototype
+    public class NaviPatchPrototype : Prototype, IBinaryResource
     {
-        public Vector3[] Points { get; }
-        public NaviPatchEdgePrototype[] Edges { get; }
+        public Vector3[] Points { get; protected set; }
+        public NaviPatchEdgePrototype[] Edges { get; protected set; }
 
-        public NaviPatchPrototype(BinaryReader reader)
+        //---
+
+        public void Deserialize(BinaryReader reader)
         {
-            Points = new Vector3[reader.ReadUInt32()];
-            for (int i = 0; i < Points.Length; i++)
-                Points[i] = reader.ReadVector3();
-
-            Edges = new NaviPatchEdgePrototype[reader.ReadUInt32()];
-            for (int i = 0; i < Edges.Length; i++)
-                Edges[i] = new(reader);
+            Points = BinaryResourceSerializer.ReadVectorFromBinaryReader<Vector3>(reader);
+            Edges = BinaryResourceSerializer.ReadPrototypeContainer<NaviPatchEdgePrototype>(reader);
         }
     }
 
-    public class NaviPatchEdgePrototype : Prototype
+    public class NaviPatchEdgePrototype : Prototype, IBinaryResource
     {
-        public uint ProtoNameHash { get; }
-        public uint Index0 { get; }
-        public uint Index1 { get; }
-        public NaviContentFlags[] Flags0 { get; }
-        public NaviContentFlags[] Flags1 { get; }
+        public int Index0 { get; protected set; }
+        public int Index1 { get; protected set; }
+        public NaviContentFlags[] Flags0 { get; protected set; }
+        public NaviContentFlags[] Flags1 { get; protected set; }
 
-        public NaviPatchEdgePrototype(BinaryReader reader)
+        //---
+
+        public void Deserialize(BinaryReader reader)
         {
-            ProtoNameHash = reader.ReadUInt32();
-            Index0 = reader.ReadUInt32();
-            Index1 = reader.ReadUInt32();
-
-            Flags0 = new NaviContentFlags[reader.ReadUInt32()];
-            for (int i = 0; i < Flags0.Length; i++)
-                Flags0[i] = (NaviContentFlags)reader.ReadByte();
-
-            Flags1 = new NaviContentFlags[reader.ReadUInt32()];
-            for (int i = 0; i < Flags1.Length; i++)
-                Flags1[i] = (NaviContentFlags)reader.ReadByte();
+            Index0 = reader.ReadInt32();
+            Index1 = reader.ReadInt32();
+            Flags0 = BinaryResourceSerializer.ReadVectorFromBinaryReader<NaviContentFlags>(reader);
+            Flags1 = BinaryResourceSerializer.ReadVectorFromBinaryReader<NaviContentFlags>(reader);
         }
     }
 
-    public class NaviPatchFragmentPrototype : Prototype
+    public class NaviPatchFragmentPrototype : Prototype, IBinaryResource
     {
-        public Vector3 Position { get; }
-        public Vector3 Rotation { get; }
-        public Vector3 Scale { get; }
-        public Vector3 PrePivot { get; }
-        public ulong FragmentResource { get; }
+        // V10_TODO check this
+        public Vector3 Position { get; protected set; }
+        public Orientation Rotation { get; protected set; }
+        public Vector3 Scale { get; protected set; }
+        public Vector3 PrePivot { get; protected set; }
+        public string FragmentResource { get; protected set; }
+
+        //---
+
+        public void Deserialize(BinaryReader reader)
+        {
+            Position = reader.Read<Vector3>();
+            Rotation = reader.Read<Orientation>();
+            Scale = reader.Read<Vector3>();
+            PrePivot = reader.Read<Vector3>();
+            FragmentResource = reader.ReadFixedString32();
+        }
     }
 }

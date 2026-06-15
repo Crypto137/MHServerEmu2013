@@ -1,4 +1,4 @@
-﻿using MHServerEmu.Games.GameData.Calligraphy.Attributes;
+﻿using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.GameData.Prototypes.Generators;
 using MHServerEmu.Games.Regions;
 

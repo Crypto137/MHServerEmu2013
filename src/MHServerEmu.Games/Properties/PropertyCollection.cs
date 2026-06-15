@@ -147,6 +147,11 @@ namespace MHServerEmu.Games.Properties
 
         public PropertyCollection() { }
 
+        public override string ToString()
+        {
+            return _aggregateList.ToString();
+        }
+
         // NOTE: In the client GetProperty() and SetProperty() handle conversion to and from PropertyValue,
         // but we take care of that with implicit casting defined in PropertyValue.cs, so these methods are
         // largely redundant and are kept to avoid deviating from the client API.
@@ -629,8 +634,6 @@ namespace MHServerEmu.Games.Properties
             while (_watchers.Count > 0)
                 DetachWatcher(_watchers.First());
         }
-
-        public override string ToString() => _aggregateList.ToString();
 
         #region Iteration
 

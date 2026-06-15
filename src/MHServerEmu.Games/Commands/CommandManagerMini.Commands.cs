@@ -30,7 +30,7 @@ namespace MHServerEmu.Games.Commands
         {
             if (@params.Length == 0) return "Invalid parameters.";
 
-            var matches = GameDatabase.SearchPrototypes(@params[0], DataFileSearchFlags.NoMultipleMatches | DataFileSearchFlags.CaseInsensitive, BlueprintId.Invalid,
+            var matches = GameDatabase.SearchPrototypes(@params[0], DataFileSearchFlags.NoMultipleMatches | DataFileSearchFlags.IgnoreCase, BlueprintId.Invalid,
                 typeof(AvatarPrototype));
 
             if (matches.Any() == false)
@@ -105,7 +105,7 @@ namespace MHServerEmu.Games.Commands
             if (@params.Length == 0)
                 return "Invalid parameters.";
 
-            var matches = GameDatabase.SearchPrototypes(@params[0], DataFileSearchFlags.NoMultipleMatches | DataFileSearchFlags.CaseInsensitive, BlueprintId.Invalid,
+            var matches = GameDatabase.SearchPrototypes(@params[0], DataFileSearchFlags.NoMultipleMatches | DataFileSearchFlags.IgnoreCase, BlueprintId.Invalid,
                 typeof(ItemPrototype));
 
             if (matches.Any() == false)

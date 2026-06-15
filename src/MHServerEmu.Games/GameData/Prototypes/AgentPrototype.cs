@@ -1,4 +1,4 @@
-﻿using MHServerEmu.Games.GameData.Calligraphy.Attributes;
+﻿using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.GameData.Prototypes.AI;
 
 namespace MHServerEmu.Games.GameData.Prototypes
@@ -19,11 +19,11 @@ namespace MHServerEmu.Games.GameData.Prototypes
     public class AgentPrototype : WorldEntityPrototype
     {
         public Allegiance Allegiance { get; protected set; }
-        [Mixin]
+        [PrototypeField(PrototypeFieldType.Mixin)]
         public LocomotorPrototype Locomotion { get; protected set; }
         public PrototypeId HitReactCondition { get; protected set; }
         public BehaviorProfilePrototype BehaviorProfile { get; protected set; }
-        [Mixin]
+        [PrototypeField(PrototypeFieldType.Mixin)]
         public PopulationInfoPrototype PopulationInfo { get; protected set; }
         public int WakeDelayMS { get; protected set; }
         public int WakeRandomStartMS { get; protected set; }

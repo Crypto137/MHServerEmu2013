@@ -1,5 +1,4 @@
 ﻿using MHServerEmu.Games.GameData.Calligraphy;
-using MHServerEmu.Games.GameData.Calligraphy.Attributes;
 using MHServerEmu.Games.Loot;
 
 namespace MHServerEmu.Games.GameData.Prototypes
@@ -81,6 +80,7 @@ namespace MHServerEmu.Games.GameData.Prototypes
         public LocaleStringId TooltipTitle { get; protected set; }
         public AssetId UIIcon { get; protected set; }
         public LocaleStringId UITooltip { get; protected set; }
+        [PrototypeField(PrototypeFieldType.PropertyList)]
         public PrototypePropertyCollection Properties { get; protected set; }
         public PrototypeId[] PassivePowers { get; protected set; }
         public PrototypeId Type { get; protected set; }

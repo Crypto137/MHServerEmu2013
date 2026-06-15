@@ -1,4 +1,4 @@
-﻿using MHServerEmu.Games.GameData.Calligraphy.Attributes;
+﻿using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.GameData.Resources;
 
 namespace MHServerEmu.Games.GameData.Prototypes
@@ -92,7 +92,7 @@ namespace MHServerEmu.Games.GameData.Prototypes
     {
         public void Deserialize(BinaryReader reader)
         {
-            // dummy because we don't care about this
+            // V10_TODO
         }
     }
 

@@ -15,54 +15,57 @@ namespace MHServerEmu.Games.GameData.Prototypes
         public Cell.Filler FillerEdges { get; protected set; }
         // V10_NOTE: No RoadConnections in 1.10
         public string ClientMap { get; protected set; }
-        public MarkerSetPrototype InitializeSet { get; protected set; }
-        public MarkerSetPrototype MarkerSet { get; protected set; }
-        public NaviPatchSourcePrototype NaviPatchSource { get; protected set; }
+        public MarkerSetPrototype InitializeSet { get; protected set; } = new();
+        public MarkerSetPrototype MarkerSet { get; protected set; } = new();
+        public NaviPatchSourcePrototype NaviPatchSource { get; protected set; } = new();
         public bool IsOffsetInMapFile { get; protected set; }
-        public HeightMapPrototype HeightMap { get; protected set; }
+        public HeightMapPrototype HeightMap { get; protected set; } = new();
         public PrototypeGuid[] HotspotPrototypes { get; protected set; }
+
+        //---
+
         public bool HasNavigationData { get; private set; }
 
         public void Deserialize(BinaryReader reader)
         {
-            Vector3 max = reader.ReadVector3();
-            Vector3 min = reader.ReadVector3();
+            Vector3 max = reader.Read<Vector3>();
+            Vector3 min = reader.Read<Vector3>();
             BoundingBox = new(min, max);
             Type = (Cell.Type)reader.ReadUInt32();
             Walls = (Cell.Walls)reader.ReadUInt32();
             FillerEdges = (Cell.Filler)reader.ReadUInt32();
             ClientMap = reader.ReadFixedString32();
-            InitializeSet = new(reader);
-            MarkerSet = new(reader);
-            NaviPatchSource = new(reader);
-            IsOffsetInMapFile = reader.ReadByte() > 0;
-            HeightMap = new(reader);
+            InitializeSet.Deserialize(reader);
+            MarkerSet.Deserialize(reader);
+            NaviPatchSource.Deserialize(reader);
+            IsOffsetInMapFile = reader.ReadBoolean();
+            HeightMap.Deserialize(reader);
+            HotspotPrototypes = BinaryResourceSerializer.ReadVectorFromBinaryReader<PrototypeGuid>(reader);
+        }
 
-            HotspotPrototypes = new PrototypeGuid[reader.ReadUInt32()];
-            for (int i = 0; i < HotspotPrototypes.Length; i++)
-                HotspotPrototypes[i] = (PrototypeGuid)reader.ReadUInt64();
+        public override void PostProcess()
+        {
+            base.PostProcess();
 
             HasNavigationData = NaviPatchSource.NaviPatch.Points.HasValue() || NaviPatchSource.PropPatch.Points.HasValue();
         }
     }
 
-    public class HeightMapPrototype : Prototype
+    public class HeightMapPrototype : Prototype, IBinaryResource
     {
-        public Vector2 HeightMapSize { get; }
-        public short[] HeightMapData { get; }
-        public byte[] HotspotData { get; }
+        public int HeightMapSizeX { get; protected set; }
+        public int HeightMapSizeY { get; protected set; }
+        public short[] HeightMapData { get; protected set; }
+        public byte[] HotspotData { get; protected set; }
 
-        public HeightMapPrototype(BinaryReader reader)
+        //---
+
+        public void Deserialize(BinaryReader reader)
         {
-            HeightMapSize = new(reader.ReadUInt32(), reader.ReadUInt32());
-
-            HeightMapData = new short[reader.ReadUInt32()];
-            for (int i = 0; i < HeightMapData.Length; i++)
-                HeightMapData[i] = reader.ReadInt16();
-
-            HotspotData = new byte[reader.ReadUInt32()];
-            for (int i = 0; i < HotspotData.Length; i++)
-                HotspotData[i] = reader.ReadByte();
+            HeightMapSizeX = reader.ReadInt32();
+            HeightMapSizeY = reader.ReadInt32();
+            HeightMapData = BinaryResourceSerializer.ReadVectorFromBinaryReader<short>(reader);
+            HotspotData = BinaryResourceSerializer.ReadVectorFromBinaryReader<byte>(reader);
         }
     }
 }

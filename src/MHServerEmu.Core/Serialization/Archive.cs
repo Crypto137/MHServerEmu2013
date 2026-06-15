@@ -24,9 +24,10 @@ namespace MHServerEmu.Core.Serialization
         Invalid = 0,
         // Versions 1-8 were used in the 0.x branch, so we start at 9 here.
         Initial = 9,
+        AddedMissionEventInstance = 10,
 
         // Update the current version if you add any    <---------
-        Current = Initial
+        Current = AddedMissionEventInstance
     }
 
     public enum GameBuildNumber : uint
@@ -277,10 +278,9 @@ namespace MHServerEmu.Core.Serialization
             return success;
         }
 
-        private void SetError(string error)
+        private void SetError(string error, [CallerLineNumber] int line = 0)
         {
-            int lineNumber = new StackFrame(1, true).GetFileLineNumber();
-            Logger.Error($"Archive ERROR at line {lineNumber}: {error}");
+            Logger.Error($"Archive ERROR at line {line}: {error}");
             Error ??= error;
         }
 
@@ -295,24 +295,24 @@ namespace MHServerEmu.Core.Serialization
 
             if (IsPacking)
             {
-                byte? lastBitEncoded = GetLastBitEncoded();
-                byte bitBuffer = lastBitEncoded == null ? (byte)0 : (byte)lastBitEncoded;
+                ref byte lastBitEncoded = ref GetLastBitEncoded();
+                byte bitBuffer = Unsafe.IsNullRef(ref lastBitEncoded) ? (byte)0 : lastBitEncoded;
 
                 byte numEncodedBits = EncodeBoolIntoByte(ref bitBuffer, ioData);
                 if (numEncodedBits == 0)
                 {
-                    SetError("Bool encoding failed");
+                    SetError("Failed encoding bit!");
                     return false;
                 }
 
-                if (lastBitEncoded == null)
+                if (Unsafe.IsNullRef(ref lastBitEncoded))
                 {
                     _lastBitEncodedOffset = _cos.Position;
                     WriteSingleByte(bitBuffer);
                 }
                 else
                 {
-                    _buffer.WriteByteAt(_lastBitEncodedOffset, bitBuffer);
+                    lastBitEncoded = bitBuffer;
                     if (numEncodedBits >= 5)
                         _lastBitEncodedOffset = 0;
                 }
@@ -324,7 +324,7 @@ namespace MHServerEmu.Core.Serialization
 
                 if (DecodeBoolFromByte(ref _encodedBitBuffer, ref ioData, out byte numRemainingBits) == false)
                 {
-                    SetError("Bool decoding failed");
+                    SetError("Failed decoding bit!");
                     return false;
                 }
 
@@ -676,7 +676,7 @@ namespace MHServerEmu.Core.Serialization
 
                 if (ReadVarint(ref ioData) == false)
                 {
-                    SetError($"Exception reading archive!");
+                    SetError("Exception reading archive!");
                     return false;
                 }
             }
@@ -704,7 +704,7 @@ namespace MHServerEmu.Core.Serialization
 
                 if (ReadVarint(ref ioData) == false)
                 {
-                    SetError($"Exception reading archive!");
+                    SetError("Exception reading archive!");
                     return false;
                 }
             }
@@ -882,8 +882,16 @@ namespace MHServerEmu.Core.Serialization
         {
             int length = bytes.Length;
 
-            for (int i = 0; i < length; i++)
-                bytes[i] = _cis.ReadRawByte();
+            try
+            {
+                for (int i = 0; i < length; i++)
+                    bytes[i] = _cis.ReadRawByte();
+            }
+            catch (Exception e)
+            {
+                Logger.ErrorException(e, nameof(ReadBytes));
+                return false;
+            }
 
             return true;
         }
@@ -891,70 +899,41 @@ namespace MHServerEmu.Core.Serialization
         // These methods are also used for FavorSpeed (disk mode).
 
         /// <summary>
-        /// Writes the provided <see cref="uint"/> value at the current position in the underlying stream. Returns <see langword="true"/> if successful.
+        /// Writes the provided <typeparamref name="T"/> value at the current position in the underlying stream. Returns <see langword="true"/> if successful.
         /// </summary>
-        public bool WriteUnencodedStream(uint value)
+        public bool WriteUnencodedStream<T>(T value) where T: unmanaged
         {
             Span<byte> bytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref value, 1));
             return WriteBytes(bytes);
         }
 
         /// <summary>
-        /// Writes the provided <see cref="uint"/> value at the specified position in the underlying stream. Returns <see langword="true"/> if successful.
+        /// Writes the provided <typeparamref name="T"/> value at the specified position in the underlying stream. Returns <see langword="true"/> if successful.
         /// </summary>
-        public bool WriteUnencodedStream(uint value, long position)
+        public bool WriteUnencodedStream<T>(T value, long position) where T: unmanaged
         {
-            // NOTE: PropertyCollection::serializeWithDefault() manipulates the archive buffer directly. First it allocates 4 bytes
-            // for the number of properties, than it writes all the properties, and then it goes back and updates the number.
-            // NOTE2: Persistent archives also do this for all ISerialize objects, except it writes the number of bytes written.
-            return _buffer.WriteUInt32At(position, value);
+            try
+            {
+                byte[] buffer = _buffer.GetBuffer();
+                Span<byte> span = buffer.AsSpan((int)position, Unsafe.SizeOf<T>());
+                MemoryMarshal.Cast<byte, T>(span)[0] = value;
+            }
+            catch (Exception e)
+            {
+                Logger.ErrorException(e, nameof(WriteUnencodedStream));
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
-        /// Writes the provided <see cref="ulong"/> value at the current position in the underlying stream. Returns <see langword="true"/> if successful.
+        /// Reads a <typeparamref name="T"/> value at the current position in the underlying stream. Returns <see langword="true"/> if successful.
         /// </summary>
-        public bool WriteUnencodedStream(ulong value)
+        public bool ReadUnencodedStream<T>(ref T value) where T: unmanaged
         {
             Span<byte> bytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref value, 1));
-            return WriteBytes(bytes);
-        }
-
-        /// <summary>
-        /// Reads a <see cref="uint"/> value at the current position in the underlying stream. Returns <see langword="true"/> if successful.
-        /// </summary>
-        public bool ReadUnencodedStream(ref uint value)
-        {
-            try
-            {
-                Span<byte> bytes = stackalloc byte[sizeof(uint)];
-                ReadBytes(bytes);
-                value = MemoryMarshal.Read<uint>(bytes);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Logger.ErrorException(e, nameof(ReadUnencodedStream));
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Reads a <see cref="ulong"/> value at the current position in the underlying stream. Returns <see langword="true"/> if successful.
-        /// </summary>
-        public bool ReadUnencodedStream(ref ulong value)
-        {
-            try
-            {
-                Span<byte> bytes = stackalloc byte[sizeof(ulong)];
-                ReadBytes(bytes);
-                value = MemoryMarshal.Read<ulong>(bytes);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Logger.ErrorException(e, nameof(ReadUnencodedStream));
-                return false;
-            }
+            return ReadBytes(bytes);
         }
 
         /// <summary>
@@ -1018,17 +997,21 @@ namespace MHServerEmu.Core.Serialization
         /// <summary>
         /// Returns the last bit buffer containing encoded bools. Returns <see langword="null"/> if there is no active buffer or read failed.
         /// </summary>
-        private byte? GetLastBitEncoded()
+        private ref byte GetLastBitEncoded()
         {
-            if (_lastBitEncodedOffset == 0) return null;
+            if (_lastBitEncodedOffset == 0)
+                return ref Unsafe.NullRef<byte>();
 
-            if (_buffer.ReadByteAt(_lastBitEncodedOffset, out byte lastBitEncoded) == false)
+            try
+            {
+                byte[] buffer = _buffer.GetBuffer();
+                return ref buffer[_lastBitEncodedOffset];
+            }
+            catch
             {
                 SetError("Failed getting last bit encoded!");
-                return null;
+                return ref Unsafe.NullRef<byte>();
             }
-                
-            return lastBitEncoded;
         }
 
         /// <summary>

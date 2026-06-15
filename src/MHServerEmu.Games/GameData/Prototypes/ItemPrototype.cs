@@ -1,4 +1,4 @@
-﻿using MHServerEmu.Games.GameData.Calligraphy.Attributes;
+﻿using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.Loot;
 
 namespace MHServerEmu.Games.GameData.Prototypes
@@ -66,7 +66,7 @@ namespace MHServerEmu.Games.GameData.Prototypes
         public PrototypeId[] TooltipEquipRestrictions { get; protected set; }
         public AffixEntryPrototype[] AffixesBuiltIn { get; protected set; }
         public PropertyPickInRangeEntryPrototype[] PropertiesBuiltIn { get; protected set; }
-        [Mixin]
+        [PrototypeField(PrototypeFieldType.Mixin)]
         public ProductPrototype Product { get; protected set; }
         public LocaleStringId ItemCategory { get; protected set; }
         public LocaleStringId ItemSubcategory { get; protected set; }

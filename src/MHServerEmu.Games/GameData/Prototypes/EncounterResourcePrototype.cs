@@ -6,19 +6,26 @@ namespace MHServerEmu.Games.GameData.Prototypes
 {
     public class EncounterResourcePrototype : Prototype, IBinaryResource
     {
-        public PrototypeGuid PopulationMarkerGuid { get; private set; }
-        public string ClientMap { get; private set; }
-        public MarkerSetPrototype MarkerSet { get; private set; }
-        public NaviPatchSourcePrototype NaviPatchSource { get; private set; }
+        public PrototypeGuid PopulationMarkerGuid { get; protected set; }
+        public string ClientMap { get; protected set; }
+        public MarkerSetPrototype MarkerSet { get; protected set; } = new();
+        public NaviPatchSourcePrototype NaviPatchSource { get; protected set; } = new();
+
+        //---
+
         public bool HasEdges { get; private set; }
 
         public void Deserialize(BinaryReader reader)
         {
             PopulationMarkerGuid = (PrototypeGuid)reader.ReadUInt64();
             ClientMap = reader.ReadFixedString32();
+            MarkerSet.Deserialize(reader);
+            NaviPatchSource.Deserialize(reader);
+        }
 
-            MarkerSet = new(reader);
-            NaviPatchSource = new(reader);
+        public override void PostProcess()
+        {
+            base.PostProcess();
 
             HasEdges = NaviPatchSource.NaviPatch.Edges.HasValue() || NaviPatchSource.PropPatch.Edges.HasValue();
         }

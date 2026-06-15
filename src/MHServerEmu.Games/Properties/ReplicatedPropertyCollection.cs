@@ -20,6 +20,11 @@ namespace MHServerEmu.Games.Properties
 
         public ReplicatedPropertyCollection() { }
 
+        public override string ToString()
+        {
+            return $"{nameof(_replicationId)}: {_replicationId}\n{base.ToString()}";
+        }
+
         public void Bind(IArchiveMessageDispatcher messageDispatcher, AOINetworkPolicyValues interestPolicies)
         {
             if (!Verify.IsNotNull(messageDispatcher)) return;
