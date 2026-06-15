@@ -36,10 +36,10 @@
         Mixin,
         Prototype,
         PrototypePtr,
-        PrototypeRefPtr,        // "Resources should not use PrototypeRefPtrs, or you should implement them"
+        PrototypeRefPtr,        // V10_NOTE: Does not exist in the 1.10 client.
         VectorPrototypeDataRef,
         ListPrototypeDataRef,
-        VectorAssetDataRef,
+        VectorAssetDataRef,     // V10_NOTE: Does not exist in the 1.10 client.
         ListAssetRef,
         ListAssetTypeRef,
         ListBool,
@@ -54,11 +54,11 @@
         ListPrototypePtr,       // "Lists of PrototypePtrs are not parsed as a standard prototype field"
         ListMixin,              // "Mixin lists are not parsed as a standard prototype field"
         VectorPrototypePtr,     // "Vectors of PrototypePtrs are not parsed as a standard prototype field"
-        VectorPrototypeRefPtr,  // "Resources should not use PrototypeRefPtrs, or you should implement them"
+        VectorPrototypeRefPtr,  // V10_NOTE: Does not exist in the 1.10 client.
         UnkType52,
         Vector,
         PropertyId,
-        PropertyCollection,        // "Property collections are not parsed as a standard prototype field"
+        PropertyCollection,     // "Property collections are not parsed as a standard prototype field"
         PropertyList,
     }
 }

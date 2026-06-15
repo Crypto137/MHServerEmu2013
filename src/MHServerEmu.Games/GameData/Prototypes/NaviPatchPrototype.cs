@@ -61,7 +61,6 @@ namespace MHServerEmu.Games.GameData.Prototypes
 
     public class NaviPatchFragmentPrototype : Prototype, IBinaryResource
     {
-        // V10_TODO check this
         public Vector3 Position { get; protected set; }
         public Orientation Rotation { get; protected set; }
         public Vector3 Scale { get; protected set; }

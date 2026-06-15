@@ -6,7 +6,6 @@ namespace MHServerEmu.Games.GameData.Prototypes
 {
     public class NaviFragmentPrototype : Prototype, IBinaryResource
     {
-        // V10_TODO check this
         public NaviFragmentPolyPrototype[] FragmentPolys { get; protected set; }
         public NaviFragmentPolyPrototype[] PropFragmentPolys { get; protected set; }
 
@@ -21,7 +20,6 @@ namespace MHServerEmu.Games.GameData.Prototypes
 
     public class NaviFragmentPolyPrototype : Prototype, IBinaryResource
     {
-        // V10_TODO check this
         public NaviContentTags ContentTag { get; protected set; }
         public Vector3[] Points { get; protected set; }
 

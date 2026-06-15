@@ -1,9 +1,20 @@
-﻿using MHServerEmu.Games.GameData.Calligraphy;
+﻿using MHServerEmu.Core.Extensions;
+using MHServerEmu.Core.VectorMath;
+using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.GameData.Resources;
 
 namespace MHServerEmu.Games.GameData.Prototypes
 {
     #region Enums
+
+    public enum PanelScaleMode
+    {
+        None,
+        XStretch,
+        YOnly,
+        Both,
+        ScreenSize
+    }
 
     [AssetEnum((int)GenericGameplay)]
     public enum TipType
@@ -90,9 +101,96 @@ namespace MHServerEmu.Games.GameData.Prototypes
 
     public class UIPrototype : Prototype, IBinaryResource
     {
+        public UIPanelPrototype[] UIPanels { get; protected set; }
+
+        //---
+
         public void Deserialize(BinaryReader reader)
         {
-            // V10_TODO
+            UIPanels = BinaryResourceSerializer.ReadPrototypeContainer<UIPanelPrototype>(reader);
+        }
+    }
+
+    public class UIPanelPrototype : Prototype, IBinaryResource
+    {
+        public string PanelName { get; protected set; }
+        public string TargetName { get; protected set; }
+        public PanelScaleMode ScaleMode { get; protected set; }
+        public UIPanelPrototype[] Children { get; protected set; }
+        public string WidgetClass { get; protected set; }
+        public string SWFName { get; protected set; }
+        public bool OpenOnStart { get; protected set; }
+        public bool VisibilityToggleable { get; protected set; }
+        public bool CanClickThrough { get; protected set; }
+        public bool StaticPosition { get; protected set; }
+        public bool EntityInteractPanel { get; protected set; }
+        public bool UseNewPlacementSystem { get; protected set; }
+        // V10_NOTE: No KeepLoaded in 1.10
+
+        //---
+
+        public virtual void Deserialize(BinaryReader reader)
+        {
+            PanelName = reader.ReadFixedString32();
+            TargetName = reader.ReadFixedString32();
+            ScaleMode = (PanelScaleMode)reader.ReadUInt32();
+            Children = BinaryResourceSerializer.ReadPrototypeContainer<UIPanelPrototype>(reader);
+            WidgetClass = reader.ReadFixedString32();
+            SWFName = reader.ReadFixedString32();
+            OpenOnStart = reader.ReadBoolean();
+            VisibilityToggleable = reader.ReadBoolean();
+            CanClickThrough = reader.ReadBoolean();
+            StaticPosition = reader.ReadBoolean();
+            EntityInteractPanel = reader.ReadBoolean();
+            UseNewPlacementSystem = reader.ReadBoolean();
+        }
+    }
+
+    public class StretchedPanelPrototype : UIPanelPrototype
+    {
+        public Vector2 TopLeftPin { get; protected set; }
+        public string TL_X_TargetName { get; protected set; }
+        public string TL_Y_TargetName { get; protected set; }
+        public Vector2 BottomRightPin { get; protected set; }
+        public string BR_X_TargetName { get; protected set; }
+        public string BR_Y_TargetName { get; protected set; }
+
+        //---
+
+        public override void Deserialize(BinaryReader reader)
+        {
+            TopLeftPin = reader.Read<Vector2>();
+            TL_X_TargetName = reader.ReadFixedString32();
+            TL_Y_TargetName = reader.ReadFixedString32();
+            BottomRightPin = reader.Read<Vector2>();
+            BR_X_TargetName = reader.ReadFixedString32();
+            BR_Y_TargetName = reader.ReadFixedString32();
+
+            base.Deserialize(reader);
+        }
+    }
+
+    public class AnchoredPanelPrototype : UIPanelPrototype
+    {
+        public Vector2 SourceAttachmentPin { get; protected set; }
+        public Vector2 TargetAttachmentPin { get; protected set; }
+        public Vector2 VirtualPixelOffset { get; protected set; }
+        public string PreferredLane { get; protected set; }
+        public Vector2 OuterEdgePin { get; protected set; }
+        public Vector2 NewSourceAttachmentPin { get; protected set; }
+
+        //---
+
+        public override void Deserialize(BinaryReader reader)
+        {
+            SourceAttachmentPin = reader.Read<Vector2>();
+            TargetAttachmentPin = reader.Read<Vector2>();
+            VirtualPixelOffset = reader.Read<Vector2>();
+            PreferredLane = reader.ReadFixedString32();
+            OuterEdgePin = reader.Read<Vector2>();
+            NewSourceAttachmentPin = reader.Read<Vector2>();
+
+            base.Deserialize(reader);
         }
     }
 
