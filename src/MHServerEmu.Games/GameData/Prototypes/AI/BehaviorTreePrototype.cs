@@ -2,20 +2,46 @@
 
 namespace MHServerEmu.Games.GameData.Prototypes.AI
 {
-    // V10_TODO: BehaviorTree is an alternative brain type used in place of ProceduralAI,
-    // and it's more data-driven. Need to investigate further how it works at some point.
+    // V10_NOTE: BehaviorTree is an alternative brain type based on data-driven logic used in place of ProceduralAI.
+    // Later versions replaced brains with ProceduralAI, and in version 1.35 behavior trees were completely removed from the game.
 
     #region Enums
 
-    [AssetEnum]
-    public enum BehaviorParallelMode
+    [AssetEnum((int)None)]
+    public enum ThresholdValueType
     {
+        Absolute,
+        Percentage,
         None,
-        All,
-        One,
     }
 
-    [AssetEnum((int)Probabilistic)]
+    [AssetEnum((int)None)]
+    public enum PowerStateType
+    {
+        Active,
+        Cooling,
+        IsToggledOn,
+        IsChanneling,
+        None,
+    }
+
+    [AssetEnum((int)None)]
+    public enum DistanceCheckType
+    {
+        CenterToCenter,
+        EdgeToEdge,
+        None,
+    }
+
+    [AssetEnum((int)All)]
+    public enum BehaviorParallelMode
+    {
+        One,
+        All,
+        None,
+    }
+
+    [AssetEnum((int)Invalid)]
     public enum BehaviorSelectorType
     {
         Invalid,
@@ -23,36 +49,28 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
         Probabilistic,
     }
 
-    [AssetEnum((int)Active)]
-    public enum BehaviorBranchType
+    [AssetEnum((int)NumberOfPlayers)]
+    public enum BehaviorDecoratorLoopCurveIndexType
     {
-        Active,
-        Combat,
-        Custom1,
-        Idle,
+        None,
+        NumberOfPlayers,
+        Constant,
+    }
+
+    [AssetEnum((int)None)]
+    public enum BehaviorDecoratorType
+    {
+        AlwaysSucceed,
+        InvertResult,
+        Loop,
         None,
     }
 
     [AssetEnum((int)None)]
-    public enum ClearSelectedEntityType
+    public enum OwnerStateType
     {
         None,
-        ClearAssistedEntity,
-        ClearTarget,
-    }
-
-    [AssetEnum((int)ClosestAllyToTarget)]
-    public enum WhoToGiveCommandsToType
-    {
-        ClosestAllyToTarget,
-        RandomAlliesInSenses,
-    }
-
-    [AssetEnum((int)NumberOfPlayers)]
-    public enum ActionGiveCommandCurveType
-    {
-        NumberOfPlayers,
-        None,
+        CanMove,
     }
 
     [AssetEnum((int)EqualTo)]
@@ -66,21 +84,6 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
         LessThanEqualTo,
         HasProperty,
         DoesNotHaveProperty,
-    }
-
-    [AssetEnum((int)None)]
-    public enum OwnerStateType
-    {
-        None,
-        CanMove,
-    }
-
-    [AssetEnum((int)None)]
-    public enum DistanceCheckType
-    {
-        CenterToCenter,
-        EdgeToEdge,
-        None,
     }
 
     [AssetEnum((int)None)]
@@ -99,14 +102,6 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
     }
 
     [AssetEnum((int)None)]
-    public enum ThresholdValueType
-    {
-        Absolute,
-        Percentage,
-        None,
-    }
-
-    [AssetEnum((int)None)]
     public enum ConditionNoSelectedEntityType
     {
         None,
@@ -114,31 +109,54 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
         AssistedEntity,
     }
 
+    [AssetEnum((int)RandomAlliesInSenses)]
+    public enum GiveCommandType
+    {
+        ClosestAllyToTarget,
+        RandomAlliesInSenses,
+    }
+
     [AssetEnum((int)None)]
-    public enum PowerStateType
+    public enum NumEntitiesToGiveCommandsType
+    {
+        NumberOfPlayers,
+        None,
+    }
+
+    [AssetEnum((int)None)]
+    [Flags]
+    public enum BehaviorInterruptType
+    {
+        None                = 0,
+        Alerted             = 1 << 0,
+        AllyDeath           = 1 << 1,
+        CollisionWithTarget = 1 << 2,
+        Command             = 1 << 3,
+        Defeated            = 1 << 4,
+        ForceIdle           = 1 << 5,
+        InitialBranch       = 1 << 6,
+        LeashDistanceMet    = 1 << 7,
+        NoTarget            = 1 << 8,
+        Override            = 1 << 9,
+        TargetSighted       = 1 << 10,
+    }
+
+    [AssetEnum((int)None)]
+    public enum ClearSelectedEntityType
+    {
+        None,
+        ClearAssistedEntity,
+        ClearTarget,
+    }
+
+    [AssetEnum((int)None)]
+    public enum BehaviorBranchType
     {
         Active,
-        Cooling,
-        IsToggledOn,
-        IsChanneling,
+        Combat,
+        Custom1,
+        Idle,
         None,
-    }
-
-    [AssetEnum((int)None)]
-    public enum BehaviorDecoratorType
-    {
-        AlwaysSucceed,
-        InvertResult,
-        Loop,
-        None,
-    }
-
-    [AssetEnum((int)NumberOfPlayers)]
-    public enum BehaviorDecoratorLoopCurveIndexType
-    {
-        None,
-        NumberOfPlayers,
-        Constant,
     }
 
     #endregion
@@ -290,7 +308,6 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
     {
     }
 
-
     public class ActionAlertAlliesPrototype : BehaviorActionPrototype
     {
     }
@@ -302,9 +319,9 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
 
     public class ActionChangeBlackboardFactPrototype : BehaviorActionPrototype
     {
-        public BlackboardOperatorType Operation { get; protected set; }
         public PrototypeId PropertyInfo { get; protected set; }
         public int Value { get; protected set; }
+        public BlackboardOperatorType Operation { get; protected set; }
     }
 
     public class ActionDelayPrototype : BehaviorActionPrototype
@@ -327,9 +344,9 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
     {
         public float RangeMax { get; protected set; }
         public float RangeMin { get; protected set; }
-        public bool StopAtFlankingWaypoint { get; protected set; }
-        public float ToTargetFlankingAngle { get; protected set; }
         public float WaypointRadius { get; protected set; }
+        public float ToTargetFlankingAngle { get; protected set; }
+        public bool StopAtFlankingWaypoint { get; protected set; }
         public int TimeoutMS { get; protected set; }
         public bool FailOnTimeout { get; protected set; }
     }
@@ -341,10 +358,10 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
 
     public class ActionGiveCommandPrototype : BehaviorActionPrototype
     {
-        public WhoToGiveCommandsToType WhomToGiveCommands { get; protected set; }
+        public GiveCommandType WhomToGiveCommands { get; protected set; }
         public AIEntityAttributePrototype[] AttributeList { get; protected set; }
         public CurveId NumEntitiesToCommandCount { get; protected set; }
-        public ActionGiveCommandCurveType NumEntitiesToCommandCurveIndex { get; protected set; }
+        public NumEntitiesToGiveCommandsType NumEntitiesToCommandCurveIndex { get; protected set; }
     }
 
     public class ActionMoveToPrototype : BehaviorActionPrototype
@@ -412,13 +429,13 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
     public class ActionSelectEntityPrototype : BehaviorActionPrototype
     {
         public AIEntityAttributePrototype[] AttributeList { get; protected set; }
+        public bool LockEntityOnceSelected { get; protected set; }
         public float MaxDistanceThreshold { get; protected set; }
         public float MinDistanceThreshold { get; protected set; }
         public SelectEntityPoolType PoolType { get; protected set; }
         public SelectEntityMethodType SelectionMethod { get; protected set; }
         public PrototypeId EntitiesPropertyForComparison { get; protected set; }
         public SelectEntityType SelectEntityType { get; protected set; }
-        public bool LockEntityOnceSelected { get; protected set; }
         public float CellOrRegionAABBScale { get; protected set; }
     }
 
@@ -445,8 +462,8 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
 
     public class ActionTriggerSpawnersPrototype : BehaviorActionPrototype
     {
-        public bool EnableSpawner { get; protected set; }
         public PrototypeId[] Spawners { get; protected set; }
+        public bool EnableSpawner { get; protected set; }
     }
 
     public class ActionUseAffixPowerPrototype : BehaviorActionPrototype
@@ -470,7 +487,6 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
         public float TargetAngleOffset { get; protected set; }
         public bool UseMainTargetForAOEActivation { get; protected set; }
         public float MinDistanceFromOwner { get; protected set; }
-        public bool ForceInvalidTargetActivation { get; protected set; }    // not in the blueprint
         public bool AllowMovementClipping { get; protected set; }
         public float MinDistanceFromTarget { get; protected set; }
     }

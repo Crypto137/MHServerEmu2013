@@ -32,8 +32,6 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
         AllEntitiesInRegionOfAgent,
         PotentialAlliesOfAgent,
         PotentialEnemiesOfAgent,
-        // Not found in client
-        ItemsAroundAgent = 0,
     }
 
     [AssetEnum((int)None)]
@@ -66,6 +64,7 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
         Target,
         SpawnPosition,
         DespawnPosition,
+        Type4,
         PathNode,
         AssistedEntity
     }
@@ -83,7 +82,7 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
     }
 
     [AssetEnum((int)Default)]
-    public enum MovementSpeedOverride
+    public enum MovementSpeedOverride   // Gazillion::s_locomotorMovementSpeedOverrideTable
     {
         Default,
         Walk,
@@ -109,24 +108,6 @@ namespace MHServerEmu.Games.GameData.Prototypes.AI
         Sub,
         SetTargetId,
         ClearTargetId,
-    }
-
-    [AssetEnum((int)None)]
-    [Flags]
-    public enum BehaviorInterruptType
-    {
-        None                = 0,
-        Alerted             = 1 << 0,
-        AllyDeath           = 1 << 1,
-        CollisionWithTarget = 1 << 2,
-        Command             = 1 << 3,
-        Defeated            = 1 << 4,
-        ForceIdle           = 1 << 5,
-        InitialBranch       = 1 << 6,
-        LeashDistanceMet    = 1 << 7,
-        NoTarget            = 1 << 8,
-        Override            = 1 << 9,
-        TargetSighted       = 1 << 10,
     }
 
     #endregion
