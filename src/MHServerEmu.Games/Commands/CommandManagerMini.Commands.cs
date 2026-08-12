@@ -223,6 +223,31 @@ namespace MHServerEmu.Games.Commands
             return $"Set player name to '{name}'.";
         }
 
+        [Command("levelup", "Levels up.")]
+        private string LevelUp(string[] @params, PlayerConnection invoker)
+        {
+            Avatar avatar = invoker.Player.CurrentAvatar;
+            if (avatar != null)
+            {
+                long xpRequired = avatar.Properties[PropertyEnum.ExperienceLevelMax];
+                avatar.AwardXP(xpRequired);
+            }
+
+            return string.Empty;
+        }
+
+        [Command("levelmax", "Levels up to cap.")]
+        private string LevelMax(string[] @params, PlayerConnection invoker)
+        {
+            Avatar avatar = invoker.Player.CurrentAvatar;
+            if (avatar != null)
+            {
+                avatar.AwardXP(long.MaxValue);
+                avatar.Properties[PropertyEnum.ExperienceLevelCurrent] = 0;
+            }
+            return string.Empty;
+        }
+
         [Command("test", "Runs test code.")]
         private string Test(string[] @params, PlayerConnection invoker)
         {

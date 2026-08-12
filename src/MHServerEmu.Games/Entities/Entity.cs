@@ -138,7 +138,7 @@ namespace MHServerEmu.Games.Entities
 
         #region Property Properties (lol)
 
-        public int CharacterLevel { get => Properties[PropertyEnum.CharacterLevel]; }
+        public int CharacterLevel { get => Properties[PropertyEnum.CharacterLevel]; set => SetCharacterLevel(value); }
         public int CharacterLevelFromArea { get => Properties[PropertyEnum.CharacterLevelFromArea]; }   // CombatLevel?
 
         public PrototypeId State { get => Properties[PropertyEnum.EntityState]; }
@@ -695,5 +695,10 @@ namespace MHServerEmu.Games.Entities
         }
 
         #endregion
+
+        protected virtual void SetCharacterLevel(int characterLevel)
+        {
+            Properties[PropertyEnum.CharacterLevel] = characterLevel;
+        }
     }
 }

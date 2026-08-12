@@ -86,6 +86,11 @@ namespace MHServerEmu.Games.Powers
             return GetPowerCategory(powerProto) == PowerCategoryType.ComboEffect;
         }
 
+        public static bool IsUltimatePower(PowerPrototype powerProto)
+        {
+            return powerProto.IsUltimate;
+        }
+
         #endregion
     }
 }

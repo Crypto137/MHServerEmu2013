@@ -214,7 +214,7 @@ namespace MHServerEmu.Games.Network
                 case ClientToGameServerMessage.NetMessageSwapAbilities:                     OnSwapAbilities(message); break;
                 // case ClientToGameServerMessage.NetMessageModCommitTemporary:             OnModCommitTemporary(message); break;
                 // case ClientToGameServerMessage.NetMessageModReset:                       OnModReset(message); break;
-                // case ClientToGameServerMessage.NetMessagePowerPointAllocationCommit:     OnPowerPointAllocationCommit(message); break;
+                case ClientToGameServerMessage.NetMessagePowerPointAllocationCommit:        OnPowerPointAllocationCommit(message); break;
                 case ClientToGameServerMessage.NetMessageRequestDeathRelease:               OnRequestDeathRelease(message); break;
                 // case ClientToGameServerMessage.NetMessageRequestResurrectDecline:        OnRequestResurrectDecline(message); break;
                 // case ClientToGameServerMessage.NetMessageRequestResurrectAvatar:         OnRequestResurrectAvatar(message); break;
@@ -561,6 +561,20 @@ namespace MHServerEmu.Games.Network
                 return;
 
             avatar.SwapAbilities((AbilitySlot)swapAbilities.SlotNumberA, (AbilitySlot)swapAbilities.SlotNumberB, true);
+        }
+
+        private void OnPowerPointAllocationCommit(in MailboxMessage message)
+        {
+            var powerPointAllocationCommit = message.As<NetMessagePowerPointAllocationCommit>();
+            if (!Verify.IsNotNull(powerPointAllocationCommit)) return;
+
+            Avatar avatar = Player.GetAvatar((PrototypeId)powerPointAllocationCommit.AvatarRef);
+            if (!Verify.IsNotNull(avatar)) return;
+
+            if (!Verify.IsTrue(avatar.GetOwnerOfType<Player>() == Player, $"Player [{Player}] is attempting to allocate power points for avatar [{avatar}] that belongs to another player"))
+                return;
+
+            avatar.PowerPointAllocationCommit(powerPointAllocationCommit);
         }
 
         private void OnRequestDeathRelease(in MailboxMessage message)

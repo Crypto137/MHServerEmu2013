@@ -111,7 +111,7 @@ namespace MHServerEmu.Games.Entities.PowerCollections
             return GetPowerRecordByRef(powerProtoRef, targetEntityId)?.Power;
         }
 
-        public bool ContainsPower(PrototypeId powerProtoRef, ulong targetEntityId)
+        public bool ContainsPower(PrototypeId powerProtoRef, ulong targetEntityId = 0)
         {
             return GetPowerRecordByRef(powerProtoRef, targetEntityId) != null;
         }

@@ -356,7 +356,7 @@ namespace MHServerEmu.Games.Entities
         {
             PowerCollection col = PowerCollection;  // variable name from the client
             if (!Verify.IsNotNull(col)) return false;
-            return col.ContainsPower(powerProtoRef, 0);
+            return col.ContainsPower(powerProtoRef);
         }
 
         public Power AssignPower(PrototypeId powerProtoRef, in PowerIndexProperties indexProps, bool sendPowerAssignmentToClients = true, PrototypeId triggeringPowerRef = PrototypeId.Invalid)

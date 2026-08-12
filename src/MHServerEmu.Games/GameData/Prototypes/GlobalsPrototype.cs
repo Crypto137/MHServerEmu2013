@@ -1,4 +1,5 @@
-﻿using MHServerEmu.Games.GameData.Calligraphy;
+﻿using MHServerEmu.Core.Logging;
+using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.GameData.Prototypes.AI;
 
 namespace MHServerEmu.Games.GameData.Prototypes
@@ -134,6 +135,51 @@ namespace MHServerEmu.Games.GameData.Prototypes
         public EvalPrototype VendorLevelingEval { get; protected set; }
         public EvalPrototype VendorRollTableLevelEval { get; protected set; }
         public float RestedHealthPerMinMult { get; protected set; }
+
+        //---
+
+        public const long InvalidXPRequirement = -1;
+
+        public int GetAvatarLevelCap()
+        {
+            Curve levelingCurve = GetAvatarLevelingCurve();
+            if (!Verify.IsNotNull(levelingCurve)) return 0;
+
+            return levelingCurve.MaxPosition;
+        }
+
+        public int GetPowerPointsGrantedAtLevel(int level, int startingLevel = 1)
+        {
+            Curve curve = PowerPointsGrantedAtLevel.AsCurve();
+            if (!Verify.IsNotNull(curve)) return 0;
+
+            level = Math.Max(level, startingLevel);
+            return curve.IntegrateDiscreteInt(startingLevel, level);
+        }
+
+        public long GetAvatarLevelUpXPRequirement(int level)
+        {
+            if (level < 1)
+                return InvalidXPRequirement;
+
+            Curve levelingCurve = GetAvatarLevelingCurve();
+            if (!Verify.IsNotNull(levelingCurve)) return InvalidXPRequirement;
+
+            return GetLevelUpXPRequirementFromCurve(level, levelingCurve);
+        }
+
+        private static long GetLevelUpXPRequirementFromCurve(int level, Curve curve)
+        {
+            if (level < curve.MinPosition || level > curve.MaxPosition)
+                return InvalidXPRequirement;
+
+            return curve.GetInt64At(level);
+        }
+
+        private Curve GetAvatarLevelingCurve()
+        {
+            return CurveDirectory.Instance.GetCurve(LevelingCurve);
+        }
     }
 
     public class AIGlobalsPrototype : Prototype

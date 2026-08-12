@@ -1,6 +1,7 @@
 ﻿using Gazillion;
 using MHServerEmu.Core.Extensions;
 using MHServerEmu.Core.Logging;
+using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.Serialization;
 using MHServerEmu.Core.VectorMath;
 using MHServerEmu.Games.Common;
@@ -33,6 +34,8 @@ namespace MHServerEmu.Games.Entities.Avatars
 
         public AvatarPrototype AvatarPrototype { get => Prototype as AvatarPrototype; }
 
+        public bool IsAtLevelCap { get => CharacterLevel >= GetAvatarLevelCap(); }
+
         public PrototypeId CurrentTransformMode { get; private set; } = PrototypeId.Invalid;
 
         public override bool IsMovementAuthoritative { get => false; }
@@ -48,22 +51,9 @@ namespace MHServerEmu.Games.Entities.Avatars
             // Default stats for a level 1 avatar
             AvatarPrototype avatarProto = GameDatabase.GetPrototype<AvatarPrototype>(PrototypeDataRef);
 
-            Properties[PropertyEnum.CharacterLevel] = 1;
-
             Properties[PropertyEnum.EnduranceMax] = Properties[PropertyEnum.EnduranceBase];
             Properties[PropertyEnum.EnduranceMaxOther] = Properties[PropertyEnum.EnduranceMax];
             Properties[PropertyEnum.Endurance] = Properties[PropertyEnum.EnduranceMax];
-
-            foreach (PowerProgressionTablePrototype powerProgTable in avatarProto.PowerProgressionTables)
-            {
-                foreach (PowerProgressionEntryPrototype powerProgEntry in powerProgTable.PowerProgressionEntries)
-                {
-                    PrototypeId powerProtoRef = powerProgEntry.PowerAssignment.Ability;
-
-                    Properties[PropertyEnum.PowerRankCurrentBest, powerProtoRef] = 1;
-                    Properties[PropertyEnum.PowerGrantRank, powerProtoRef] = 1;
-                }
-            }
 
             // Init AbilityKeyMapping
             if (settings.ArchiveData == null)
@@ -72,6 +62,31 @@ namespace MHServerEmu.Games.Entities.Avatars
                 _abilityKeyMappings.Add(keyMapping);
                 keyMapping.SlotDefaultAbilities(this);
             }
+
+            return true;
+        }
+
+        public override bool ApplyInitialReplicationState(ref EntitySettings settings)
+        {
+            if (base.ApplyInitialReplicationState(ref settings) == false)
+                return false;
+
+            Player player = Game.EntityManager.GetEntity<Player>(settings.InventoryLocation.ContainerId);
+
+            if (settings.ArchiveData != null)
+            {
+                if (player != null)
+                {
+                    TryLevelUp(player, true);
+                    //RestoreMissionRewardProperties(player);
+                }
+
+                //ResetResources(false);
+            }
+
+            // Restore level state by running the level up code
+            int level = CharacterLevel;
+            OnLevelUp(level, level, false);
 
             return true;
         }
@@ -194,10 +209,150 @@ namespace MHServerEmu.Games.Entities.Avatars
             AssignPower(GameDatabase.GlobalsPrototype.ReturnToHubPower, indexProps);
             AssignPower(GameDatabase.GlobalsPrototype.ReturnToFieldPower, indexProps);
 
+            UpdatePowerProgressionPowers(false);
+        }
+
+        #endregion
+
+        #region Power Ranks
+
+        private void UpdatePowerPointsUnspent()
+        {
+            // V10_NOTE: This whole thing needs to be investigated further for 1.10.
+            // AvatarPowerPoints appears to be persistent, starting rank seems to come from StartingEquippedAbilities,
+            // and AvatarPowerPoints seems to be required for powers to be unlocked for power point allocation.
+            AdvancementGlobalsPrototype advancementGlobals = GameDatabase.AdvancementGlobalsPrototype;
+            if (!Verify.IsNotNull(advancementGlobals)) return;
+
+            int numPowerPoints = advancementGlobals.GetPowerPointsGrantedAtLevel(CharacterLevel);
+
+            numPowerPoints += Properties[PropertyEnum.AvatarPowerPointsBonus];
+
+            foreach (var kvp in Properties.IteratePropertyRange(PropertyEnum.AvatarPower))
+                numPowerPoints -= kvp.Value;
+
+            numPowerPoints = Math.Max(numPowerPoints, 0);
+            Properties[PropertyEnum.AvatarPowerPoints] = numPowerPoints;
+        }
+
+        #endregion
+
+        #region Power Points
+
+        public bool PowerPointAllocationClearTemporary()
+        {
+            using var propsToRemoveHandle = ListPool<PropertyId>.Get(out List<PropertyId> propsToRemove);
+
+            foreach (var kvp in Properties.IteratePropertyRange(PropertyEnum.AvatarPowerTemp))
+                propsToRemove.Add(kvp.Key);
+
+            bool removed = false;
+
+            foreach (PropertyId propId in propsToRemove)
+                removed |= Properties.RemoveProperty(propId);
+
+            return removed;
+        }
+
+        public void PowerPointAllocationCommit(NetMessagePowerPointAllocationCommit commitMessage)
+        {
+            Verify.IsTrue(PowerPointAllocationClearTemporary() == false, $"[{this}] already had a pending allocation");
+
+            using var propsToAdjustHandle = DictionaryPool<PropertyId, PropertyValue>.Get(out Dictionary<PropertyId, PropertyValue> propsToAdjust);
+
+            long pointsSpent = 0;
+
+            for (int i = 0; i < commitMessage.AllocationsCount; i++)
+            {
+                NetStructPowerPointAllocation allocation = commitMessage.AllocationsList[i];
+                PrototypeId powerProtoRef = (PrototypeId)allocation.PowerProtoId;
+                int delta = (int)allocation.Delta;
+                if (!Verify.IsTrue(delta > 0))
+                    goto End;
+
+                Properties[PropertyEnum.AvatarPowerTemp, powerProtoRef] = delta;
+                pointsSpent += delta;
+            }
+
+            long powerPointsAvailable = Properties[PropertyEnum.AvatarPowerPoints];
+            if (!Verify.IsTrue(pointsSpent <= powerPointsAvailable, $"Number of points spent [{pointsSpent}] exceeds the total available number [{powerPointsAvailable}] for [{this}]"))
+                goto End;
+
+            foreach (var kvp in Properties.IteratePropertyRange(PropertyEnum.AvatarPowerTemp))
+            {
+                Property.FromParam(kvp.Key, 0, out PrototypeId powerProtoRef);
+
+                if (!Verify.IsTrue(ValidatePendingPowerPointAllocation(powerProtoRef)))
+                    goto End;
+
+                propsToAdjust[new(PropertyEnum.AvatarPower, powerProtoRef)] = kvp.Value;
+            }
+
+            foreach (var kvp in propsToAdjust)
+                Properties.AdjustProperty((int)kvp.Value, kvp.Key);
+
+            UpdatePowerProgressionPowers(false);
+            UpdatePowerPointsUnspent();
+
+        End:
+            PowerPointAllocationClearTemporary();
+        }
+
+        private bool ValidatePendingPowerPointAllocation(PrototypeId powerProtoRef)
+        {
+            // V10_TODO
+            return true;
+        }
+
+        #endregion
+
+        #region Power Progression
+
+        private void UpdatePowerProgressionPowers(bool forceUnassign)
+        {
+            // V10_FIXME
+            AvatarPrototype avatarProto = AvatarPrototype;
+            if (!Verify.IsNotNull(avatarProto)) return;
+
+            foreach (PowerProgressionTablePrototype powerProgTable in avatarProto.PowerProgressionTables)
+            {
+                foreach (PowerProgressionEntryPrototype powerProgEntry in powerProgTable.PowerProgressionEntries)
+                {
+                    PrototypeId powerProtoRef = powerProgEntry.PowerAssignment.Ability;
+                    int level = CharacterLevel;
+                    
+                    if (level < powerProgEntry.Level)
+                    {
+                        Properties.RemoveProperty(new(PropertyEnum.AvatarPower, powerProtoRef));
+                        continue;
+                    }
+
+                    if (Properties.HasProperty(new PropertyId(PropertyEnum.AvatarPower, powerProtoRef)) == false)
+                        Properties[PropertyEnum.AvatarPower, powerProtoRef] = powerProgEntry.PowerAssignment.Rank;
+
+                    int rankBase = Properties[PropertyEnum.AvatarPower, powerProtoRef];
+                    Properties[PropertyEnum.PowerRankCurrentBest, powerProtoRef] = rankBase;
+                }
+            }
+
             foreach (var kvp in Properties.IteratePropertyRange(PropertyEnum.PowerRankCurrentBest))
             {
                 Property.FromParam(kvp.Key, 0, out PrototypeId powerProtoRef);
-                AssignPower(powerProtoRef, indexProps);
+                int rank = kvp.Value;
+
+                if (rank > 0)
+                {
+                    if (PowerCollection.ContainsPower(powerProtoRef) == false)
+                    {
+                        PowerIndexProperties indexProps = new(kvp.Value, CharacterLevel);
+                        AssignPower(powerProtoRef, indexProps);
+                    }
+                }
+                else
+                {
+                    if (PowerCollection.ContainsPower(powerProtoRef))
+                        UnassignPower(powerProtoRef);
+                }
             }
         }
 
@@ -302,6 +457,113 @@ namespace MHServerEmu.Games.Entities.Avatars
                 return null;
 
             return _abilityKeyMappings[0];
+        }
+
+        #endregion
+
+        #region Leveling
+
+        public void InitializeLevel(int newLevel)
+        {
+            int oldLevel = CharacterLevel;
+            CharacterLevel = newLevel;
+
+            Properties[PropertyEnum.ExperienceLevelCurrent] = 0;
+            Properties[PropertyEnum.ExperienceLevelMax] = GetLevelUpXPRequirement(newLevel);
+
+            OnLevelUp(oldLevel, newLevel);
+        }
+
+        public long AwardXP(long amount)
+        {
+            // Only entities owned by players can earn experience
+            Player owner = GetOwnerOfType<Player>();
+            if (!Verify.IsNotNull(owner)) return 0;
+
+            if (IsAtLevelCap == false)
+            {
+                Properties[PropertyEnum.ExperienceLevelCurrent] += amount;
+                TryLevelUp(owner);
+            }
+
+            return amount;
+        }
+
+        public static int GetAvatarLevelCap()
+        {
+            AdvancementGlobalsPrototype advancementProto = GameDatabase.AdvancementGlobalsPrototype;
+            return advancementProto != null ? advancementProto.GetAvatarLevelCap() : 0;
+        }
+
+        public long GetLevelUpXPRequirement(int level)
+        {
+            AdvancementGlobalsPrototype advancementProto = GameDatabase.AdvancementGlobalsPrototype;
+            if (!Verify.IsNotNull(advancementProto)) return 0;
+
+            return advancementProto.GetAvatarLevelUpXPRequirement(level);
+        }
+
+        public int TryLevelUp(Player owner, bool isInitializing = false)
+        {
+            int oldLevel = CharacterLevel;
+            int newLevel = oldLevel;
+
+            long xp = Properties[PropertyEnum.ExperienceLevelCurrent];
+            long xpNeeded = Properties[PropertyEnum.ExperienceLevelMax];
+
+            int levelCap = GetAvatarLevelCap();
+            while (newLevel < levelCap && xp >= xpNeeded)
+            {
+                xp -= xpNeeded;
+                newLevel++;
+                xpNeeded = GetLevelUpXPRequirement(newLevel);
+            }
+
+            int levelDelta = newLevel - oldLevel;
+            if (levelDelta != 0)
+            {
+                CharacterLevel = newLevel;
+                Properties[PropertyEnum.ExperienceLevelCurrent] = xp;
+                Properties[PropertyEnum.ExperienceLevelMax] = xpNeeded;
+            }
+
+            if (isInitializing || levelDelta != 0)
+                OnLevelUp(oldLevel, newLevel);
+
+            Properties[PropertyEnum.CharacterLevelFromArea] = newLevel;
+
+            return levelDelta;
+        }
+
+        private void OnLevelUp(int oldLevel, int newLevel, bool restoreHealthAndEndurance = true)
+        {
+            AvatarPrototype avatarProto = AvatarPrototype;
+            if (!Verify.IsNotNull(avatarProto)) return;
+
+            // V10_TODO: update stats
+
+            // Notify clients
+            SendLevelUpMessage();
+
+            if (IsInWorld)
+                UpdatePowerProgressionPowers(false);
+
+            UpdatePowerPointsUnspent();
+
+            // Restore health if needed
+            if (restoreHealthAndEndurance && IsDead == false)
+                Properties[PropertyEnum.Health] = Properties[PropertyEnum.HealthMax];
+        }
+
+        private void SendLevelUpMessage()
+        {
+            using var interestedClientListHandle = ListPool<PlayerConnection>.Get(out List<PlayerConnection> interestedClientList);
+            PlayerConnectionManager networkManager = Game.NetworkManager;
+            if (networkManager.GetInterestedClients(interestedClientList, this, AOINetworkPolicyValues.AOIChannelOwner | AOINetworkPolicyValues.AOIChannelProximity))
+            {
+                var levelUpMessage = NetMessageLevelUp.CreateBuilder().SetEntityID(Id).Build();
+                networkManager.SendMessageToMultiple(interestedClientList, levelUpMessage);
+            }
         }
 
         #endregion

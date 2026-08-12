@@ -337,8 +337,8 @@ namespace MHServerEmu.Games.Entities
             Avatar avatar = Game.EntityManager.CreateEntity(avatarSettings) as Avatar;
             if (!Verify.IsNotNull(avatar, LoggingLevel.Error)) return null;
 
-            /* V10_TODO
             avatar.InitializeLevel(1);
+            /* V10_TODO
             avatar.ResetResources(false);
             avatar.GiveStartingCostume();
             */
