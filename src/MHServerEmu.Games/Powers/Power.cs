@@ -1,4 +1,5 @@
-﻿using MHServerEmu.Games.Entities;
+﻿using MHServerEmu.Core.Logging;
+using MHServerEmu.Games.Entities;
 using MHServerEmu.Games.GameData;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Properties;
@@ -88,6 +89,13 @@ namespace MHServerEmu.Games.Powers
 
         public static bool IsUltimatePower(PowerPrototype powerProto)
         {
+            return powerProto.IsUltimate;
+        }
+
+        public static bool IsUltimatePower(PrototypeId powerProtoRef)
+        {
+            PowerPrototype powerProto = powerProtoRef.As<PowerPrototype>();
+            if (!Verify.IsNotNull(powerProto)) return false;
             return powerProto.IsUltimate;
         }
 

@@ -1,4 +1,6 @@
-﻿using MHServerEmu.Games.Entities.Avatars;
+﻿using MHServerEmu.Core.Extensions;
+using MHServerEmu.Core.Logging;
+using MHServerEmu.Games.Entities.Avatars;
 
 namespace MHServerEmu.Games.GameData.Prototypes
 {
@@ -33,6 +35,35 @@ namespace MHServerEmu.Games.GameData.Prototypes
         public TransformModeEntryPrototype[] TransformModes { get; protected set; }
         public IngredientLookupEntryPrototype[] IngredientLookups { get; protected set; }
         public AssetId CharacterSheetIconPath { get; protected set; }
+
+        //---
+
+        public PowerProgressionEntryPrototype GetPowerProgressionEntryForPower(PrototypeId powerProtoRef)
+        {
+            // V10_NOTE: is this supposed to be cached in a map?
+            if (PowerProgressionTables.IsNullOrEmpty())
+                return null;
+
+            foreach (PowerProgressionTablePrototype powerProgTableProto in PowerProgressionTables)
+            {
+                if (!Verify.IsNotNull(powerProgTableProto))
+                    continue;
+
+                foreach (PowerProgressionEntryPrototype entryProto in powerProgTableProto.PowerProgressionEntries)
+                {
+                    AbilityAssignmentPrototype abilityAssignmentProto = entryProto.PowerAssignment;
+                    if (!Verify.IsNotNull(abilityAssignmentProto))
+                        continue;
+
+                    if (abilityAssignmentProto.Ability != powerProtoRef)
+                        continue;
+
+                    return entryProto;
+                }
+            }
+
+            return null;
+        }
     }
 
     public class ItemAssignmentPrototype : Prototype

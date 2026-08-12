@@ -8,8 +8,10 @@ using MHServerEmu.Games.Common;
 using MHServerEmu.Games.Entities.Inventories;
 using MHServerEmu.Games.Entities.PowerCollections;
 using MHServerEmu.Games.GameData;
+using MHServerEmu.Games.GameData.Calligraphy;
 using MHServerEmu.Games.GameData.Prototypes;
 using MHServerEmu.Games.Network;
+using MHServerEmu.Games.Powers;
 using MHServerEmu.Games.Properties;
 using MHServerEmu.Games.Regions;
 using MHServerEmu.Games.Social.Guilds;
@@ -18,6 +20,8 @@ namespace MHServerEmu.Games.Entities.Avatars
 {
     public class Avatar : Agent
     {
+        private const int PowerRankLocked = -1;
+
         private static readonly Logger Logger = LogManager.CreateLogger();
 
         private Player _owner;
@@ -216,23 +220,41 @@ namespace MHServerEmu.Games.Entities.Avatars
 
         #region Power Ranks
 
-        private void UpdatePowerPointsUnspent()
+        private int GetMaxPossibleRankForPowerAtLevel(PrototypeId powerProtoRef, int level, bool includeTemp)
         {
-            // V10_NOTE: This whole thing needs to be investigated further for 1.10.
-            // AvatarPowerPoints appears to be persistent, starting rank seems to come from StartingEquippedAbilities,
-            // and AvatarPowerPoints seems to be required for powers to be unlocked for power point allocation.
-            AdvancementGlobalsPrototype advancementGlobals = GameDatabase.AdvancementGlobalsPrototype;
-            if (!Verify.IsNotNull(advancementGlobals)) return;
+            AvatarPrototype avatarProto = AvatarPrototype;
+            if (!Verify.IsNotNull(avatarProto)) return 0;
 
-            int numPowerPoints = advancementGlobals.GetPowerPointsGrantedAtLevel(CharacterLevel);
+            PowerProgressionEntryPrototype powerProgEntryProto = avatarProto.GetPowerProgressionEntryForPower(powerProtoRef);
+            if (!Verify.IsNotNull(powerProgEntryProto, $"Trying to get the max possible rank at current level for the following power not in the avatar's PowerProgressionTable:\nAvatar: [{this}]\nPower: [{powerProtoRef.GetName()}]"))
+                return 0;
 
-            numPowerPoints += Properties[PropertyEnum.AvatarPowerPointsBonus];
+            if (level < powerProgEntryProto.Level)
+                return PowerRankLocked;
 
-            foreach (var kvp in Properties.IteratePropertyRange(PropertyEnum.AvatarPower))
-                numPowerPoints -= kvp.Value;
+            PrototypeId[] prereqs = powerProgEntryProto.Prerequisites;
+            if (prereqs.HasValue())
+            {
+                foreach (PrototypeId prereqProtoRef in prereqs)
+                {
+                    int prereqRank = Properties[PropertyEnum.AvatarPower, prereqProtoRef];
+                    if (includeTemp)
+                        prereqRank += Properties[PropertyEnum.AvatarPowerTemp, prereqProtoRef];
 
-            numPowerPoints = Math.Max(numPowerPoints, 0);
-            Properties[PropertyEnum.AvatarPowerPoints] = numPowerPoints;
+                    if (prereqRank <= 0)
+                        return 0;
+                }
+            }
+
+            Curve maxRankAtCharLevelCurve = powerProgEntryProto.MaxRankForPowerAtCharacterLevel.AsCurve();
+            if (!Verify.IsNotNull(maxRankAtCharLevelCurve)) return 0;
+
+            return maxRankAtCharLevelCurve.GetIntAt(level);
+        }
+
+        private int GetMaxPossibleRankForPowerAtCurrentLevel(PrototypeId powerProtoRef, bool includeTemp)
+        {
+            return GetMaxPossibleRankForPowerAtLevel(powerProtoRef, CharacterLevel, includeTemp);
         }
 
         #endregion
@@ -300,8 +322,40 @@ namespace MHServerEmu.Games.Entities.Avatars
 
         private bool ValidatePendingPowerPointAllocation(PrototypeId powerProtoRef)
         {
-            // V10_TODO
+            if (!Verify.IsTrue(powerProtoRef != PrototypeId.Invalid)) return false;
+            if (!Verify.IsTrue(Power.IsUltimatePower(powerProtoRef) == false)) return false;
+            if (!Verify.IsTrue(Properties.HasProperty(new PropertyId(PropertyEnum.AvatarPowerTemp, powerProtoRef)))) return false;
+
+            int avatarPower = Properties[PropertyEnum.AvatarPower, powerProtoRef];
+            int avatarPowerTemp = Properties[PropertyEnum.AvatarPowerTemp, powerProtoRef];
+            int totalAfterAllocation = avatarPower + avatarPowerTemp;
+
+            PropertyInfoPrototype avatarPowerPropInfoProto = GameDatabase.PropertyInfoTable.LookupPropertyInfo(PropertyEnum.AvatarPower).Prototype;
+            if (!Verify.IsNotNull(avatarPowerPropInfoProto)) return false;
+
+            if (!Verify.IsTrue(totalAfterAllocation <= avatarPowerPropInfoProto.Max)) return false;
+            if (!Verify.IsTrue(totalAfterAllocation <= GetMaxPossibleRankForPowerAtCurrentLevel(powerProtoRef, true))) return false;
+
             return true;
+        }
+
+        private void UpdatePowerPointsUnspent()
+        {
+            // V10_NOTE: This whole thing needs to be investigated further for 1.10.
+            // AvatarPowerPoints appears to be persistent, starting rank seems to come from StartingEquippedAbilities,
+            // and AvatarPowerPoints seems to be required for powers to be unlocked for power point allocation.
+            AdvancementGlobalsPrototype advancementGlobals = GameDatabase.AdvancementGlobalsPrototype;
+            if (!Verify.IsNotNull(advancementGlobals)) return;
+
+            int numPowerPoints = advancementGlobals.GetPowerPointsGrantedAtLevel(CharacterLevel);
+
+            numPowerPoints += Properties[PropertyEnum.AvatarPowerPointsBonus];
+
+            foreach (var kvp in Properties.IteratePropertyRange(PropertyEnum.AvatarPower))
+                numPowerPoints -= kvp.Value;
+
+            numPowerPoints = Math.Max(numPowerPoints, 0);
+            Properties[PropertyEnum.AvatarPowerPoints] = numPowerPoints;
         }
 
         #endregion
