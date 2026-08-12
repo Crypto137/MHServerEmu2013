@@ -231,8 +231,8 @@ namespace MHServerEmu.Games.Navi
             if (removeExterior && _exteriorSeedEdge == null)  return;
             ClearMarkup();
 
-            using var stateStackHandle = StackPool<MarkupState>.Instance.Get(out PoolableStack<MarkupState> stateStack);
-            using var edgeStackHandle = StackPool<NaviEdge>.Instance.Get(out PoolableStack<NaviEdge> edgeStack);
+            using var stateStackHandle = StackPool<MarkupState>.Get(out PoolableStack<MarkupState> stateStack);
+            using var edgeStackHandle = StackPool<NaviEdge>.Get(out PoolableStack<NaviEdge> edgeStack);
             // Using the null coalescing operator here causes the compiler to crash on Ubuntu as of 2026/02/03.
             NaviTriangle triangle = _exteriorSeedEdge.Triangles[0] != null ? _exteriorSeedEdge.Triangles[0] : _exteriorSeedEdge.Triangles[1];
 
@@ -418,10 +418,12 @@ namespace MHServerEmu.Games.Navi
 
         public Vector3 ProjectToMesh(Vector3 regionPos)
         {
-            if (IsMeshValid == false) return Logger.WarnReturn(Vector3.Zero, $"ProjectToMesh(): Invalid mesh in region {_region}");
+            if (!Verify.IsTrue(IsMeshValid, $"Invalid mesh in region: {_region}"))
+                return Vector3.Zero;
 
             NaviTriangle triangle = NaviCdt.FindTriangleAtPoint(regionPos);
-            if (triangle == null) return Logger.WarnReturn(regionPos, $"ProjectToMesh(): Failed to find triangle at point {regionPos}");
+            if (!Verify.IsNotNull(triangle, $"Failed to find triangle at point {regionPos}"))
+                return regionPos;
 
             return NaviUtil.ProjectToPlane(triangle, regionPos);
         }
@@ -431,7 +433,7 @@ namespace MHServerEmu.Games.Navi
             var triangle = NaviCdt.FindTriangleAtPoint(center);
             if (triangle == null) return;
             triangle.PathingFlags |= PathFlags.BlackOutZone;
-            using var triStackHandle = StackPool<NaviTriangle>.Instance.Get(out PoolableStack<NaviTriangle> triStack);
+            using var triStackHandle = StackPool<NaviTriangle>.Get(out PoolableStack<NaviTriangle> triStack);
             using NaviSerialCheck naviSerialCheck = new(NaviCdt);
             float radiousSq = radius * radius;
             triStack.Push(triangle);
@@ -458,7 +460,7 @@ namespace MHServerEmu.Games.Navi
             var triangle = NaviCdt.FindTriangleAtPoint(bound.Center);
             if (triangle == null) return spawnableArea;
             spawnableArea += triangle.CalcSpawnableArea();
-            using var triStackHandle = StackPool<NaviTriangle>.Instance.Get(out PoolableStack<NaviTriangle> triStack);
+            using var triStackHandle = StackPool<NaviTriangle>.Get(out PoolableStack<NaviTriangle> triStack);
             using NaviSerialCheck naviSerialCheck = new(NaviCdt);
             triStack.Push(triangle);
             while (triStack.Count > 0)

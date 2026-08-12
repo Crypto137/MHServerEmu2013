@@ -1,5 +1,4 @@
 ﻿using MHServerEmu.Core.Collections;
-using MHServerEmu.Core.Logging;
 
 namespace MHServerEmu.Core.Memory
 {
@@ -15,119 +14,71 @@ namespace MHServerEmu.Core.Memory
         public static bool UseThreadLocalStorage;
     }
 
-    /// <summary>
-    /// Provides a pool of reusable <typeparamref name="TCollection"/> instances, similar to ArrayPool.
-    /// </summary>
-    public abstract class CollectionPool<TCollection, TValue> where TCollection: ICollection<TValue>, new()
+    public abstract class CollectionPool<TCollection, TValue> where TCollection: class, ICollection<TValue>, new()
     {
-        private static readonly Logger Logger = LogManager.CreateLogger();
+        private static readonly CollectionPoolImpl _sharedPool = new(ObjectPoolFlags.None);
 
         [ThreadStatic]
-        private static Node _threadLocalNode;
+        private static CollectionPoolImpl _threadLocalPool;
 
-        private readonly Node _sharedNode = new(false);
-
-        /// <summary>
-        /// Retrieves a <typeparamref name="TCollection"/> from the pool or allocates a new one if the pool is empty.
-        /// </summary>
-        public TCollection Get()
+        public static TCollection Get()
         {
             if (CollectionPoolSettings.UseThreadLocalStorage)
             {
-                _threadLocalNode ??= new(true);
-                return _threadLocalNode.Get();
+                _threadLocalPool ??= new(ObjectPoolFlags.ThreadLocal);
+                return _threadLocalPool.Get();
             }
             else
             {
-                lock (_sharedNode)
-                    return _sharedNode.Get();
+                lock (_sharedPool)
+                    return _sharedPool.Get();
             }
         }
 
-        /// <summary>
-        /// Retrieves a <typeparamref name="TCollection"/> from the pool or allocates a new one if the pool is empty.
-        /// Returns a <see cref="CollectionHandle"/> that can automatically return the <typeparamref name="TCollection"/> instance to the pool when it goes out of scope.
-        /// </summary>
-        public CollectionHandle Get(out TCollection collection)
-        {
-            collection = Get();
-            return new(this, collection);
-        }
-
-        /// <summary>
-        /// Clears the provided <typeparamref name="TCollection"/> and returns it to the pool.
-        /// </summary>
-        public void Return(TCollection collection)
+        public static ObjectPoolHandle<TCollection> Get(out TCollection collection)
         {
             if (CollectionPoolSettings.UseThreadLocalStorage)
             {
-                // Thread-static node should have already been allocated in Get()
-                _threadLocalNode.Return(collection);
+                _threadLocalPool ??= new(ObjectPoolFlags.ThreadLocal);
+                return _threadLocalPool.Get(out collection);
             }
             else
             {
-                lock (_sharedNode)
-                    _sharedNode.Return(collection);
+                lock (_sharedPool)
+                    return _sharedPool.Get(out collection);
             }
         }
 
-        /// <summary>
-        /// A handle that implements <see cref="IDisposable"/> that can automatically return a <typeparamref name="TCollection"/> instance to the pool when it goes out of scope.
-        /// </summary>
-        public readonly struct CollectionHandle : IDisposable
+        public static void Return (TCollection collection)
         {
-            private readonly CollectionPool<TCollection, TValue> _pool;
-            private readonly TCollection _collection;
-
-            public CollectionHandle(CollectionPool<TCollection, TValue> pool, TCollection collection)
+            if (CollectionPoolSettings.UseThreadLocalStorage)
             {
-                _pool = pool;
-                _collection = collection;
+                _threadLocalPool.Return(collection);
             }
-
-            public void Dispose()
+            else
             {
-                _pool.Return(_collection);
+                lock (_sharedPool)
+                    _sharedPool.Return(collection);
             }
         }
 
-        /// <summary>
-        /// Represents a storage unit of a pool of a particular type.
-        /// </summary>
-        private class Node
+        private sealed class CollectionPoolImpl : ObjectPool<TCollection>
         {
-            private readonly Stack<TCollection> _collectionStack = new();
-            private readonly int _threadId = -1;
+            public CollectionPoolImpl(ObjectPoolFlags flags) : base(flags) { }
 
-            private int _totalCount = 0;
-
-            public Node(bool isThreadLocal)
+            protected override TCollection Allocate()
             {
-                if (isThreadLocal)
-                    _threadId = Environment.CurrentManagedThreadId;
+                return new();
             }
 
-            /// <summary>
-            /// Retrieves a <typeparamref name="TCollection"/> from the node or allocates a new one if the node is empty.
-            /// </summary>
-            public TCollection Get()
+            protected override void OnReturn(TCollection instance)
             {
-                if (_collectionStack.Count == 0)
-                {
-                    Logger.Trace($"Get(): Created a new instance of {typeof(TCollection).Name}<{typeof(TValue).Name}> (ThreadId={_threadId}, TotalCount={++_totalCount})");
-                    return new();
-                }
-
-                return _collectionStack.Pop();
+                instance.Clear();
             }
 
-            /// <summary>
-            /// Clears the provided <typeparamref name="TCollection"/> and returns it to the node.
-            /// </summary>
-            public void Return(TCollection collection)
+            protected override int GetAllocationWarningThreshold()
             {
-                collection.Clear();
-                _collectionStack.Push(collection);
+                return 32;
             }
         }
     }
@@ -135,16 +86,12 @@ namespace MHServerEmu.Core.Memory
     /// <summary>
     /// Provides a pool of reusable <see cref="List{T}"/> instances, similar to ArrayPool.
     /// </summary>
-    public sealed class ListPool<T> : CollectionPool<List<T>, T>
+    public class ListPool<T> : CollectionPool<List<T>, T>
     {
-        public static ListPool<T> Instance { get; } = new();
-
-        private ListPool() { }
-
         /// <summary>
         /// Retrieves a <see cref="List{T}"/> from the pool or allocates a new one if the pool is empty and ensures it has the specified capacity.
         /// </summary>
-        public List<T> Get(int capacity)
+        public static List<T> Get(int capacity)
         {
             List<T> list = Get();
             list.EnsureCapacity(capacity);
@@ -156,9 +103,9 @@ namespace MHServerEmu.Core.Memory
         /// Returns a <see cref="CollectionPool{TCollection, TValue}.CollectionHandle"/> that can automatically return the <see cref="List{T}"/>
         /// instance to the pool when it goes out of scope.
         /// </summary>
-        public CollectionHandle Get(int capacity, out List<T> list)
+        public static ObjectPoolHandle<List<T>> Get(int capacity, out List<T> list)
         {
-            CollectionHandle handle = Get(out list);
+            var handle = Get(out list);
             list.EnsureCapacity(capacity);
             return handle;
         }
@@ -166,7 +113,7 @@ namespace MHServerEmu.Core.Memory
         /// <summary>
         /// Retrieves a <see cref="List{T}"/> from the pool or allocates a new one if the pool is empty and copies all elements from the provided <see cref="IEnumerable{T}"/> collection.
         /// </summary>
-        public List<T> Get(IEnumerable<T> collection)
+        public static List<T> Get(IEnumerable<T> collection)
         {
             List<T> list = Get();
             list.AddRange(collection);
@@ -177,9 +124,9 @@ namespace MHServerEmu.Core.Memory
         /// Retrieves a <see cref="List{T}"/> from the pool or allocates a new one if the pool is empty and copies all elements from the provided <see cref="IEnumerable{T}"/> collection.
         /// Returns a <see cref="CollectionPool{TCollection, TValue}.CollectionHandle"/> that can automatically return the <see cref="List{T}"/> instance to the pool when it goes out of scope.
         /// </summary>
-        public CollectionHandle Get(IEnumerable<T> collection, out List<T> list)
+        public static ObjectPoolHandle<List<T>> Get(IEnumerable<T> collection, out List<T> list)
         {
-            CollectionHandle handle = Get(out list);
+            var handle = Get(out list);
             list.AddRange(collection);
             return handle;
         }
@@ -190,9 +137,6 @@ namespace MHServerEmu.Core.Memory
     /// </summary>
     public sealed class DictionaryPool<TKey, TValue> : CollectionPool<Dictionary<TKey, TValue>, KeyValuePair<TKey, TValue>>
     {
-        public static DictionaryPool<TKey, TValue> Instance { get; } = new();
-
-        private DictionaryPool() { }
     }
 
     /// <summary>
@@ -200,9 +144,6 @@ namespace MHServerEmu.Core.Memory
     /// </summary>
     public sealed class HashSetPool<T> : CollectionPool<HashSet<T>, T>
     {
-        public static HashSetPool<T> Instance { get; } = new();
-
-        private HashSetPool() { }
     }
 
     /// <summary>
@@ -210,8 +151,5 @@ namespace MHServerEmu.Core.Memory
     /// </summary>
     public sealed class StackPool<T> : CollectionPool<PoolableStack<T>, T>
     {
-        public static StackPool<T> Instance { get; } = new();
-
-        private StackPool() { }
     }
 }

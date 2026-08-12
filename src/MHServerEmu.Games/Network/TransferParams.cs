@@ -28,17 +28,15 @@ namespace MHServerEmu.Games.Network
             PlayerConnection = playerConnection;
         }
 
-        public bool SetTarget(PrototypeId targetProtoRef, PrototypeId regionProtoRefOverride = PrototypeId.Invalid)
+        public void SetTarget(PrototypeId targetProtoRef, PrototypeId regionProtoRefOverride = PrototypeId.Invalid)
         {
             var targetProto = GameDatabase.GetPrototype<RegionConnectionTargetPrototype>(targetProtoRef);
-            if (targetProto == null) return Logger.WarnReturn(false, "SetTarget(): targetProto == null");
+            if (!Verify.IsNotNull(targetProto)) return;
 
             DestTargetRegionProtoRef = regionProtoRefOverride != PrototypeId.Invalid ? regionProtoRefOverride : targetProto.Region;
             DestTargetAreaProtoRef = targetProto.Area;
             DestTargetCellProtoRef = GameDatabase.GetDataRefByAsset(targetProto.Cell);
             DestTargetEntityProtoRef = targetProto.Entity;
-
-            return true;
         }
 
         public bool FindStartLocation(out Vector3 position, out Orientation orientation)
@@ -49,10 +47,10 @@ namespace MHServerEmu.Games.Network
             Game game = PlayerConnection.Game;
 
             Region region = game.RegionManager.GetRegion(DestRegionId);
-            if (region == null) return Logger.WarnReturn(false, "FindStartLocation(): region == null");
+            if (!Verify.IsNotNull(region)) return false;
 
             Area startArea = region.GetStartArea();
-            if (startArea == null) return Logger.WarnReturn(false, "FindStartLocation(): startArea == null");
+            if (!Verify.IsNotNull(startArea)) return false;
 
             if (region.FindTargetLocation(ref position, ref orientation, DestTargetAreaProtoRef, DestTargetCellProtoRef, DestTargetEntityProtoRef))
                 return true;

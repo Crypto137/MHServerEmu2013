@@ -219,12 +219,10 @@ namespace MHServerEmu.Games.Regions
 
         public bool InstanceMarkerSet(MarkerSetPrototype markerSet, in Transform3 transform, MarkerSetOptions instanceMarkerSetOptions)
         {
-            if (instanceMarkerSetOptions.HasFlag(MarkerSetOptions.SpawnMissionAssociated) &&
-                instanceMarkerSetOptions.HasFlag(MarkerSetOptions.NoSpawnMissionAssociated))
-            {
-                return Logger.WarnReturn(false,
-                    "InstanceMarkerSet(): SpawnMissionAssociated and NoSpawnMissionAssociated cannot be set at the same time");
-            }
+            // SpawnMissionAssociated and NoSpawnMissionAssociated cannot be set at the same time.
+            bool bothMissionAssociatedFlagsSet = instanceMarkerSetOptions.HasFlag(MarkerSetOptions.SpawnMissionAssociated) &&
+                instanceMarkerSetOptions.HasFlag(MarkerSetOptions.NoSpawnMissionAssociated);
+            if (!Verify.IsTrue(bothMissionAssociatedFlagsSet == false)) return false;
 
             if (markerSet.Markers.HasValue())
             {
@@ -304,7 +302,7 @@ namespace MHServerEmu.Games.Regions
             }
             */
 
-            using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
+            using var settingsHandle = EntitySettingsPool.Get(out EntitySettings settings);
             settings.EntityRef = entityProto.DataRef;
 
             if (entityMarker.OverrideSnapToFloor)
@@ -316,7 +314,7 @@ namespace MHServerEmu.Games.Regions
             if (entityProto.Bounds != null)
                 entityPosition.Z += entityProto.Bounds.GetBoundHalfHeight();
 
-            using PropertyCollection settingsProperties = ObjectPoolManager.Instance.Get<PropertyCollection>();
+            using var settingsPropertiesHandle = PropertyCollectionPool.Get(out PropertyCollection settingsProperties);
             settings.Properties = settingsProperties;
             int level = Area.GetCharacterLevel(entityProto);
             settings.Properties[PropertyEnum.CharacterLevel] = level;

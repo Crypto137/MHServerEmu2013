@@ -330,7 +330,7 @@ namespace MHServerEmu.Games.Entities
             Inventory avatarLibrary = GetInventory(InventoryConvenienceLabel.AvatarLibrary);
             if (!Verify.IsNotNull(avatarLibrary)) return null;
 
-            using EntitySettings avatarSettings = ObjectPoolManager.Instance.Get<EntitySettings>();
+            using var avatarSettingsHandle = EntitySettingsPool.Get(out EntitySettings avatarSettings);
             avatarSettings.EntityRef = avatarProtoRef;
             avatarSettings.InventoryLocation = new(Id, avatarLibrary.PrototypeDataRef);
 
@@ -371,7 +371,7 @@ namespace MHServerEmu.Games.Entities
 
             if (currentAvatar != null)
             {
-                using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
+                using var settingsHandle = EntitySettingsPool.Get(out EntitySettings settings);
                 settings.OptionFlags |= EntitySettingsOptionFlags.IsClientEntityHidden;
 
                 avatarToSwitchTo.EnterWorld(region, position, orientation, settings);
@@ -401,7 +401,7 @@ namespace MHServerEmu.Games.Entities
 
             Logger.Trace($"EnableCurrentAvatar(): [{CurrentAvatar}] entering world in region [{region}]");
 
-            using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
+            using var settingsHandle = EntitySettingsPool.Get(out EntitySettings settings);
 
             // V10_TODO: More stuff
 

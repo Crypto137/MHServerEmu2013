@@ -120,7 +120,7 @@ namespace MHServerEmu.Games.Commands
 
             ItemSpec itemSpec = new(itemProtoRef, rarityProtoRef, itemLevel, 0, null, seed, PrototypeId.Invalid);
 
-            using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
+            using var settingsHandle = EntitySettingsPool.Get(out EntitySettings settings);
             settings.EntityRef = itemProtoRef;
             settings.ItemSpec = itemSpec;
             settings.InventoryLocation = new(generalInv.OwnerId, generalInv.PrototypeDataRef);

@@ -81,7 +81,7 @@ namespace MHServerEmu.Games.Network
         public void InitializePlayer()
         {
             {
-                using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
+                using var settingsHandle = EntitySettingsPool.Get(out EntitySettings settings);
                 settings.EntityRef = GameDatabase.GlobalsPrototype.DefaultPlayer;
                 settings.DbGuid = PlayerDbId;
                 settings.OptionFlags = EntitySettingsOptionFlags.PopulateInventories;
@@ -121,10 +121,10 @@ namespace MHServerEmu.Games.Network
         public bool MoveToTarget(PrototypeId targetProtoRef)
         {
             RegionConnectionTargetPrototype targetProto = targetProtoRef.As<RegionConnectionTargetPrototype>();
-            if (targetProto == null) return Logger.WarnReturn(false, "MoveToTarget(): targetProto == null");
+            if (!Verify.IsNotNull(targetProto)) return false;
 
             Region region = Game.RegionManager.GetOrGenerateRegionForPlayer(targetProto.Region);
-            if (region == null) return Logger.WarnReturn(false, "MoveToTarget(): region == null");
+            if (!Verify.IsNotNull(region)) return false;
 
             TransferParams.SetTarget(targetProtoRef);
 
@@ -350,7 +350,7 @@ namespace MHServerEmu.Games.Network
             // Update locomotion state
             if (updateAvatarState.HasLocomotionstate && avatar.Locomotor != null)
             {
-                using var pathNodesHandle = ListPool<NaviPathNode>.Instance.Get(out List<NaviPathNode> pathNodes);
+                using var pathNodesHandle = ListPool<NaviPathNode>.Get(out List<NaviPathNode> pathNodes);
                 LocomotionState newSyncState = new(pathNodes);
                 newSyncState.Set(ref avatar.Locomotor.LastSyncState);
 
@@ -450,27 +450,25 @@ namespace MHServerEmu.Games.Network
             FlushMessages();    // Send the reply ASAP for more accurate timing (NOTE: this is not accurate to our packet dumps, but gives better ping values)
         }
 
-        private bool OnTryInventoryMove(in MailboxMessage message)
+        private void OnTryInventoryMove(in MailboxMessage message)
         {
             var tryInventoryMove = message.As<NetMessageTryInventoryMove>();
-            if (tryInventoryMove == null) return Logger.WarnReturn(false, "OnTryInventoryMove(): Failed to retrieve message");
+            if (!Verify.IsNotNull(tryInventoryMove)) return;
 
             Item item = Game.EntityManager.GetEntity<Item>(tryInventoryMove.ItemId);
-            if (item == null) return Logger.WarnReturn(false, "OnTryInventoryMove(): item == null");
+            if (!Verify.IsNotNull(item)) return;
 
-            if (item.GetOwnerOfType<Player>() != Player) return Logger.WarnReturn(false, "OnTryInventoryMove(): item.GetOwnerOfType<Player>() != Player");
+            if (!Verify.IsTrue(item.GetOwnerOfType<Player>() == Player)) return;
 
             Entity newOwner = Game.EntityManager.GetEntity<Entity>(tryInventoryMove.ToInventoryOwnerId);
-            if (newOwner == null) return Logger.WarnReturn(false, "OnTryInventoryMove(): newOwner == null");
+            if (!Verify.IsNotNull(newOwner)) return;
 
             Inventory inventory = newOwner.GetInventoryByRef((PrototypeId)tryInventoryMove.ToInventoryPrototype);
-            if (inventory == null) return Logger.WarnReturn(false, "OnTryInventoryMove(): inventory == null");
+            if (!Verify.IsNotNull(inventory)) return;
 
             InventoryResult result = item.ChangeInventoryLocation(inventory, tryInventoryMove.ToSlot);
-            if (result != InventoryResult.Success)
-                return Logger.WarnReturn(false, $"OnTryInventoryMove(): Failed because {result}");
-
-            return true;
+            if (!Verify.IsTrue(result == InventoryResult.Success, $"OnTryInventoryMove(): Failed because {result}"))
+                return;
         }
 
         private void OnInventoryTrashItem(in MailboxMessage message)

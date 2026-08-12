@@ -21,6 +21,7 @@
     {
         None,
         General     = 1ul << 0,
+        ObjectPool  = 1ul << 1,
 
         // Add channels here to enable them by default
         Default     = General,

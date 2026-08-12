@@ -5,14 +5,12 @@ namespace MHServerEmu.WebFrontend.Network
 {
     internal sealed class WebFrontendServiceMailbox : ServiceMailbox
     {
-        private static readonly Logger Logger = LogManager.CreateLogger();
-
         protected override void HandleServiceMessage(IGameServiceMessage message)
         {
             switch (message)
             {
                 default:
-                    Logger.Warn($"ReceiveServiceMessage(): Unhandled service message type {message.GetType().Name}");
+                    Verify.IsTrue(false, $"Unhandled service message type {message.GetType().Name}");
                     break;
             }
         }

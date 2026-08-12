@@ -52,9 +52,8 @@ namespace MHServerEmu.WebFrontend.Handlers
 
         private async Task OnLoginDataPB(WebRequestContext context, LoginDataPB loginDataPB)
         {
-            if (loginDataPB == null)
+            if (!Verify.IsNotNull(loginDataPB))
             {
-                Logger.Warn($"OnLoginDataPB(): Failed to retrieve message");
                 context.StatusCode = (int)HttpStatusCode.BadRequest;
                 return;
             }

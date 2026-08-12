@@ -273,7 +273,7 @@ namespace MHServerEmu.Games.DRAG.Generators.Areas
                 AddCellsToPicker(cellPicker, proto.NonRequiredSuperCells);
                 if (!SpawnNonRequiredCellList(random, picker, cellPicker, proto.NonRequiredSuperCellsMin, proto.NonRequiredSuperCellsMax))
                 {
-                    if (Log) Logger.Warn($"Failed to place the minimum number of Non-Required SuperCells. CELLS={Logger.ObjectCollectionToString(proto.NonRequiredSuperCells)} AREA={Area}");
+                    if (Log) Logger.Warn($"Failed to place the minimum number of Non-Required SuperCells. CELLS={{{string.Join(' ', proto.NonRequiredSuperCells.Select(cell => cell.ToString()))}}} AREA={Area}");
                     failed = true;
                 }
             }
@@ -378,7 +378,7 @@ namespace MHServerEmu.Games.DRAG.Generators.Areas
                 if (!SpawnNonRequiredCellList(random, picker, cellPicker, proto.NonRequiredNormalCellsMin, proto.NonRequiredNormalCellsMax))
                 {
                     failed = true;
-                    if (Log) Logger.Warn($"Failed to place the minimum number of Non-Required Normal Cells. CELLS={Logger.ObjectCollectionToString(proto.NonRequiredNormalCells)}");
+                    if (Log) Logger.Warn($"Failed to place the minimum number of Non-Required Normal Cells. CELLS={{{string.Join(' ', proto.NonRequiredNormalCells.Select(cell => cell.ToString()))}}}");
                 }
             }
             return !failed;
@@ -523,16 +523,15 @@ namespace MHServerEmu.Games.DRAG.Generators.Areas
 
             if (success)
             {
-                List<PrototypeId> list = ListPool<PrototypeId>.Instance.Get();
                 foreach (SuperCellEntryPrototype superCellEntry in superCell.Entries)
                 {
                     if (superCellEntry == null) continue;
                     Point2 cellCoord = new(pick.X + superCellEntry.Offset.X, pick.Y + superCellEntry.Offset.Y);
                     if (!CellContainer.ReservableCell(cellCoord.X, cellCoord.Y, GameDatabase.GetDataRefByAsset(superCellEntry.Cell))) continue;
 
-                    PrototypeId cellRef = GameDatabase.GetDataRefByAsset(superCellEntry.Cell);  // V10_NOTE: No alt cells in 1.10
+                    // V10_NOTE: No alt cells in 1.10
+                    PrototypeId cellRef = GameDatabase.GetDataRefByAsset(superCellEntry.Cell);
                     CellContainer.ReserveCell(cellCoord.X, cellCoord.Y, cellRef, GenCell.GenCellType.None);
-                    list.Add(cellRef);
 
                     if (requiredSuperCellEntry.PopulationThemeOverride != 0)
                     {
@@ -542,7 +541,6 @@ namespace MHServerEmu.Games.DRAG.Generators.Areas
 
                     RemoveCellFromRegionTransitionSpecList(superCellEntry.Cell);
                 }
-                ListPool<PrototypeId>.Instance.Return(list);
             }
 
             return success;
@@ -942,7 +940,7 @@ namespace MHServerEmu.Games.DRAG.Generators.Areas
             if (workingStack.Count == count)
                 results.Add(new(workingStack));
 
-            List<int> indexes = ListPool<int>.Instance.Get(setIndexes);
+            using var indexesHandle = ListPool<int>.Get(setIndexes, out List<int> indexes);
             foreach (var index in indexes)
             {
                 workingStack.Add(index);
@@ -951,7 +949,6 @@ namespace MHServerEmu.Games.DRAG.Generators.Areas
                 setIndexes.Add(workingStack[workingStack.Count - 1]);
                 workingStack.RemoveAt(workingStack.Count - 1);
             }
-            ListPool<int>.Instance.Return(indexes);
 
             return true;
         }

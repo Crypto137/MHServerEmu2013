@@ -195,7 +195,7 @@ namespace MHServerEmu.Games.Entities.PowerCollections
                 record.Power?.OnOwnerExitedWorld();
 
             // Copy to a temporary list to be able to remove entries while iterating
-            using var recordsHandle = ListPool<KeyValuePair<(PrototypeId, ulong), PowerCollectionRecord>>.Instance.Get(out var records);
+            using var recordsHandle = ListPool<KeyValuePair<(PrototypeId, ulong), PowerCollectionRecord>>.Get(out var records);
 
             // This needs to be done in a loop to remove all copies of powers with RefCount higher than 0.
             while (_powers.Count > 0)
@@ -325,7 +325,7 @@ namespace MHServerEmu.Games.Entities.PowerCollections
             if (!Verify.IsNotNull(retPower)) return null;
 
             // Assemble property values passed as arguments into a collection
-            using PropertyCollection initializeProperties = ObjectPoolManager.Instance.Get<PropertyCollection>();
+            using var initializePropertiesHandle = PropertyCollectionPool.Get(out PropertyCollection initializeProperties);
 
             initializeProperties[PropertyEnum.PowerRank] = indexProps.PowerRank;
             initializeProperties[PropertyEnum.CharacterLevel] = indexProps.CharacterLevel;

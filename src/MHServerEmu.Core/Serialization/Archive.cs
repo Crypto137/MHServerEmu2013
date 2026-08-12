@@ -265,8 +265,7 @@ namespace MHServerEmu.Core.Serialization
                 // For now just log a warning if there is a game build mismatch, in the future we can use this for migration between versions.
                 uint gameBuildNumber = 0;
                 success &= Transfer(ref gameBuildNumber);
-                if (gameBuildNumber != (uint)GameBuildNumber.Current)
-                    Logger.Warn($"Game build number mismatch: expected {(uint)GameBuildNumber.Current}, got {gameBuildNumber}");
+                Verify.IsTrue(gameBuildNumber == (uint)GameBuildNumber.Current, $"Game build number mismatch: expected {(uint)GameBuildNumber.Current}, got {gameBuildNumber}");
             }
             else if (IsReplication)
             {
@@ -768,7 +767,10 @@ namespace MHServerEmu.Core.Serialization
             if (IsPacking)
             {
                 if (skip)
-                    return Logger.WarnReturn(false, "EndSizeChecking(): Skipping not supported while packing!");
+                {
+                    SetError("Skipping not supported while packing!");
+                    return false;
+                }
 
                 // Update the dummy value written in StartSizeChecking() with actual size
                 WriteUnencodedStream((uint)(_cos.Position - startPosition), startPosition);
@@ -781,7 +783,10 @@ namespace MHServerEmu.Core.Serialization
                 if (currentPosition != endPosition)
                 {
                     if (skip == false)
-                        return Logger.WarnReturn(false, "EndSizeChecking(): Size inconsistency!");
+                    {
+                        SetError("Size inconsistency!");
+                        return false;
+                    }
 
                     _cis.SkipRawBytes((int)(endPosition - currentPosition));
                 }
@@ -853,7 +858,7 @@ namespace MHServerEmu.Core.Serialization
             }
             catch (Exception e)
             {
-                Logger.ErrorException(e, nameof(ReadSingleByte));
+                SetError($"Failed reading data! - {e.Message}");
                 return false;
             }
         }
@@ -889,7 +894,7 @@ namespace MHServerEmu.Core.Serialization
             }
             catch (Exception e)
             {
-                Logger.ErrorException(e, nameof(ReadBytes));
+                SetError($"Failed reading data! - {e.Message}");
                 return false;
             }
 
@@ -920,7 +925,7 @@ namespace MHServerEmu.Core.Serialization
             }
             catch (Exception e)
             {
-                Logger.ErrorException(e, nameof(WriteUnencodedStream));
+                SetError($"Failed writing data! - {e.Message}");
                 return false;
             }
 

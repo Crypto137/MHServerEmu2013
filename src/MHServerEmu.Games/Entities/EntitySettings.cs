@@ -32,10 +32,12 @@ namespace MHServerEmu.Games.Entities
         DefaultOptions = EnterGame | PopulateInventories | LogInventoryErrors
     }
 
+    public sealed class EntitySettingsPool : GenericPool<EntitySettings> { }
+
     /// <summary>
     /// Contains parameters for <see cref="Entity"/> creation.
     /// </summary>
-    public sealed class EntitySettings : IPoolable, IDisposable
+    public sealed class EntitySettings : IPoolable
     {
         public EntityCreateResults Results;
 
@@ -77,8 +79,6 @@ namespace MHServerEmu.Games.Entities
         public int VariationSeed { get; set; }
         public bool IsPopulation { get; set; }
 
-        public bool IsInPool { get; set; }
-
         public EntitySettings() { }     // Use pooling instead of calling this directly
 
         public void ResetForPool()
@@ -119,11 +119,6 @@ namespace MHServerEmu.Games.Entities
             Lifespan = default;
             VariationSeed = 0;
             IsPopulation = default;
-        }
-
-        public void Dispose()
-        {
-            ObjectPoolManager.Instance.Return(this);
         }
     }
 

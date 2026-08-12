@@ -86,11 +86,11 @@ namespace MHServerEmu.Games.Regions
             Settings = settings;
             Properties = new();   // V10_TODO Properties.Bind()
 
-            Id = settings.InstanceAddress; // Region Id
-            if (Id == 0) return Logger.WarnReturn(false, "Initialize(): settings.InstanceAddress == 0");
+            Id = settings.InstanceAddress;
+            if (!Verify.IsTrue(Id != 0)) return false;
 
             Prototype = GameDatabase.GetPrototype<RegionPrototype>(settings.RegionDataRef);
-            if (Prototype == null) return Logger.WarnReturn(false, "Initialize(): Prototype == null");
+            if (!Verify.IsNotNull(Prototype)) return false;
 
             RandomSeed = settings.Seed;
             Aabb = settings.Bounds;
@@ -98,9 +98,7 @@ namespace MHServerEmu.Games.Regions
             if (NaviSystem.Initialize(this) == false) return false;
             if (Aabb.IsZero() == false)
             {
-                if (settings.GenerateAreas)
-                    Logger.Warn("Initialize(): Bound is not Zero with GenerateAreas On");
-
+                Verify.IsTrue(settings.GenerateAreas == false);
                 InitializeSpacialPartition(Aabb);
                 NaviMesh.Initialize(Aabb, 1000.0f, this);
             }
@@ -112,7 +110,10 @@ namespace MHServerEmu.Games.Regions
             if (settings.GenerateAreas)
             {
                 if (GenerateAreas(settings.GenerateLog) == false)
-                    return Logger.WarnReturn(false, $"Initialize(): Failed to generate areas for\n  region: {this}\n    seed: {RandomSeed}");
+                {
+                    Logger.Warn($"Failed to generate areas for\\n  region: {this}\\n    seed: {RandomSeed}\"");
+                    return false;
+                }
             }
 
             return true;

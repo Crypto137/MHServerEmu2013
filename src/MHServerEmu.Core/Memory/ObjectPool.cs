@@ -2,60 +2,127 @@
 
 namespace MHServerEmu.Core.Memory
 {
+    public enum ObjectPoolFlags
+    {
+        None            = 0,
+        ThreadLocal     = 1 << 0,
+    }
+
     /// <summary>
-    /// Stores instances of classes that implement both <see cref="IPoolable"/> and <see cref="IDisposable"/> for later reuse.
+    /// Allocates and stores instances of <typeparamref name="T"/> for reuse.
     /// </summary>
-    public class ObjectPool
+    public abstract class ObjectPool<T> : IObjectPool where T: class
     {
         private static readonly Logger Logger = LogManager.CreateLogger();
 
-        private readonly Stack<IPoolable> _objects = new();
-        private readonly int _threadId = -1;
+        private readonly List<T> _instances = new();
+#if DEBUG
+        private readonly HashSet<T> _activeInstances = new();
+#endif
+        private readonly ObjectPoolFlags _flags;
+        private readonly int _threadId;
 
-        public int TotalCount { get; private set; }
-        public int AvailableCount { get => _objects.Count; }
+        private int _totalAllocatedCount = 0;
+        private T _lastReturnedInstance = null;
 
-        public ObjectPool(bool isThreadLocal)
+        public int CountTotal { get => _totalAllocatedCount; }
+        public int CountInactive { get => _instances.Count + (_lastReturnedInstance != null ? 1 : 0); }
+        public int CountActive { get => CountTotal - CountInactive; }
+
+        public ObjectPool(ObjectPoolFlags flags = ObjectPoolFlags.None)
         {
-            if (isThreadLocal)
-                _threadId = Environment.CurrentManagedThreadId;
+            _flags = flags;
+            _threadId = _flags.HasFlag(ObjectPoolFlags.ThreadLocal) ? Environment.CurrentManagedThreadId : -1;
         }
 
-        /// <summary>
-        /// Creates if needed and returns an instance of <typeparamref name="T"/>.
-        /// </summary>
-        public T Get<T>() where T: IPoolable, IDisposable, new()
+        public T Get()
         {
-            T @object;
+            T instance;
 
-            if (AvailableCount == 0)
+            if (_lastReturnedInstance != null)
             {
-                @object = new();
-
-                TotalCount++;
-                Logger.Trace($"Get<T>(): Created a new instance of {typeof(T).Name} (ThreadId={_threadId}, TotalCount={TotalCount})");
+                instance = _lastReturnedInstance;
+                _lastReturnedInstance = null;
+            }
+            else if (_instances.Count == 0)
+            {
+                instance = Allocate();
+                _totalAllocatedCount++;
+#if DEBUG
+                Logger.Trace($"Get(): Created a new instance of {typeof(T)} (ThreadId={_threadId}, TotalCount={_totalAllocatedCount})", LogChannels.ObjectPool);
+#endif
+                int threshold = GetAllocationWarningThreshold();
+                Verify.IsTrue(threshold <= 0 || _totalAllocatedCount <= threshold,
+                    $"Allocation warning threshold exceeded! This indicates that it needs to be increased or there may be a memory leak.\n\ttype=[{typeof(T)}], count={_totalAllocatedCount}/{threshold}, threadId={_threadId}");
             }
             else
             {
-                @object = (T)_objects.Pop();
-                @object.IsInPool = false;
+                int index = _instances.Count - 1;
+                instance = _instances[index];
+                _instances.RemoveAt(index);
             }
 
-            return @object;
+#if DEBUG
+            if (_activeInstances.Add(instance) == false)
+                throw new Exception($"Attempted to get an active instance of {typeof(T).Name} from the pool.");
+#endif
+
+            OnGet(instance);
+            return instance;
         }
 
-        /// <summary>
-        /// Returns an instance of <typeparamref name="T"/> to the pool for later reuse.
-        /// </summary>
-        public bool Return<T>(T @object) where T: IPoolable, IDisposable, new()
+        public ObjectPoolHandle<T> Get(out T instance)
         {
-            if (@object.IsInPool)
-                return Logger.WarnReturn(false, $"Return<T>(): Attempted to return an instance of {typeof(T).Name} that is already in a pool!");
+            instance = Get();
+            return new(this, instance);
+        }
 
-            @object.ResetForPool();
-            @object.IsInPool = true;
-            _objects.Push(@object);
-            return true;
+        public void Return(T instance)
+        {
+#if DEBUG
+            if (_activeInstances.Remove(instance) == false)
+                throw new Exception($"Attempted to return an inactive instance of {typeof(T).Name} to the pool.");
+#endif
+
+            OnReturn(instance);
+
+            if (_lastReturnedInstance == null)
+                _lastReturnedInstance = instance;
+            else
+                _instances.Add(instance);
+        }
+
+        public void ReturnUnsafe(object instance)
+        {
+            Return((T)instance);
+        }
+
+        protected abstract T Allocate();
+
+        protected virtual void OnGet(T instance) { }
+
+        protected virtual void OnReturn(T instance) { }
+
+        protected virtual int GetAllocationWarningThreshold()
+        {
+            return 0;   // disabled by default
+        }
+    }
+
+    public readonly struct ObjectPoolHandle<T> : IDisposable where T: class
+    {
+        private readonly ObjectPool<T> _pool;
+        private readonly T _instance;
+
+        public ObjectPoolHandle(ObjectPool<T> pool, T instance)
+        {
+            _pool = pool;
+            _instance = instance;
+        }
+
+        public void Dispose()
+        {
+            _pool.Return(_instance);
         }
     }
 }

@@ -149,8 +149,8 @@ namespace MHServerEmu.Games.MTXStore
 
         public bool OnBuyItemFromCatalog(Player player, NetMessageBuyItemFromCatalog buyItemFromCatalog)
         {
-            if (buyItemFromCatalog.HasSkuId == false)
-                return Logger.WarnReturn(false, $"OnBuyItemFromCatalog(): No SkuId received from player [{player}]");
+            if (!Verify.IsTrue(buyItemFromCatalog.HasSkuId, $"No SkuId received from player [{player}]"))
+                return false;
 
             long skuId = buyItemFromCatalog.SkuId;
             long clientPrice = buyItemFromCatalog.ItemUnitPrice;
@@ -197,7 +197,7 @@ namespace MHServerEmu.Games.MTXStore
 
             ItemSpec itemSpec = new(itemProtoRef, rarityProtoRef, itemLevel, 0, null, seed, PrototypeId.Invalid);
 
-            using EntitySettings settings = ObjectPoolManager.Instance.Get<EntitySettings>();
+            using var settingsHandle = EntitySettingsPool.Get(out EntitySettings settings);
             settings.EntityRef = itemProtoRef;
             settings.ItemSpec = itemSpec;
             settings.InventoryLocation = new(generalInv.OwnerId, generalInv.PrototypeDataRef);

@@ -10,6 +10,7 @@ namespace MHServerEmu.Core.Network
     public enum GameServiceType
     {
         GameInstance,
+        Leaderboard,
         PlayerManager,
         GroupingManager,
         Frontend,
@@ -119,13 +120,12 @@ namespace MHServerEmu.Core.Network
         {
             int index = (int)serviceType;
 
-            if (index < 0 || index >= _services.Length)
-                throw new ArgumentOutOfRangeException($"Invalid service type [{serviceType}].");
+            if (!Verify.IsTrue(index >= 0 && index < _services.Length, $"Invalid service type [{serviceType}]."))
+                return false;
 
             IGameService service = _services[index];
-
-            if (service == null)
-                return Logger.WarnReturn(false, $"RouteMessage(): No service is registered for type [{serviceType}]");
+            if (!Verify.IsNotNull(service, $"No service is registered for type [{serviceType}]"))
+                return false;
 
             switch (service.State)
             {
@@ -136,7 +136,7 @@ namespace MHServerEmu.Core.Network
                     break;
 
                 default:
-                    Logger.Warn($"Unexpected state [{service.State}] for type [{serviceType}] when sending [{typeof(T).Name}]");
+                    Verify.IsTrue(false, $"Unexpected state [{service.State}] for type [{serviceType}] when sending [{typeof(T).Name}]");
                     break;
             }
 
@@ -209,11 +209,8 @@ namespace MHServerEmu.Core.Network
                 if (service.State == GameServiceState.Shutdown)
                     continue;
 
-                if (service.State != GameServiceState.Running)
-                {
-                    Logger.Warn($"ShutdownServices(): Unexpected service state [{service.State}] for type [{serviceType}]");
+                if (!Verify.IsTrue(service.State == GameServiceState.Running, $"Unexpected service state [{service.State}] for type [{serviceType}]"))
                     continue;
-                }
 
                 Logger.Info($"Shutting down service for type [{serviceType}]...");
 
@@ -249,7 +246,7 @@ namespace MHServerEmu.Core.Network
         /// </summary>
         public string GetServerStatusString()
         {
-            using var statusDictHandle = DictionaryPool<string, long>.Instance.Get(out Dictionary<string, long> statusDict);
+            using var statusDictHandle = DictionaryPool<string, long>.Get(out Dictionary<string, long> statusDict);
             GetServerStatus(statusDict);
 
             StringBuilder sb = new();

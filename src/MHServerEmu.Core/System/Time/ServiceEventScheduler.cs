@@ -8,8 +8,6 @@ namespace MHServerEmu.Core.System.Time
     /// </summary>
     public class ServiceEventScheduler<THandle, TEventData>
     {
-        private static readonly Logger Logger = LogManager.CreateLogger();
-
         private readonly Dictionary<THandle, ServiceEvent> _events = new();
 
         public ServiceEventScheduler()
@@ -23,7 +21,7 @@ namespace MHServerEmu.Core.System.Time
 
             TimeSpan now = Clock.UnixTime;
 
-            using var eventsHandle = ListPool<ServiceEvent>.Instance.Get(out List<ServiceEvent> events);
+            using var eventsHandle = ListPool<ServiceEvent>.Get(out List<ServiceEvent> events);
             events.AddRange(_events.Values);
 
             foreach (ServiceEvent serviceEvent in events)
@@ -39,7 +37,7 @@ namespace MHServerEmu.Core.System.Time
 
         public bool ScheduleEvent(THandle handle, TimeSpan delay, Action<TEventData> callback, TEventData eventData = default)
         {
-            if (callback == null) return Logger.WarnReturn(false, "ScheduleEvent(): callback == null");
+            if (!Verify.IsNotNull(callback)) return false;
 
             CancelEvent(handle);
 

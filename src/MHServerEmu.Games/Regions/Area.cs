@@ -243,10 +243,11 @@ namespace MHServerEmu.Games.Regions
 
         private bool GeneratePopulation()
         {
-            if (TestStatus(GenerateFlag.Background) == false)
-                return Logger.WarnReturn(false, $"Generate population should have background generator \nRegion:{Region}\nArea:{this}");
+            if (TestStatus(GenerateFlag.Population))
+                return true;
 
-            if (TestStatus(GenerateFlag.Population)) return true;
+            if (!Verify.IsTrue(TestStatus(GenerateFlag.Background), $"GeneratePopulation() should be called when background is already generated\nRegion:{Region}\nArea:{this}"))
+                return false;
 
             /* V10_TODO
             var populationProto = PopulationArea.PopulationPrototype;
@@ -270,8 +271,8 @@ namespace MHServerEmu.Games.Regions
 
         private bool GenerateNavi()
         {
-            if (TestStatus(GenerateFlag.Background) == false)
-                return Logger.WarnReturn(false, $"[Engineering Issue] Navi is getting generated out of order with, or after a failed area generator\nRegion:{Region}\nArea:{this}");
+            if (!Verify.IsTrue(TestStatus(GenerateFlag.Background), $"[Engineering Issue] Navi is getting generated out of order with, or after a failed area generator\nRegion:{Region}\nArea:{this}"))
+                return false;
 
             if (TestStatus(GenerateFlag.Navi))
                 return true;
