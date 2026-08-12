@@ -1,5 +1,6 @@
 ﻿using Gazillion;
 using MHServerEmu.Core.Collisions;
+using MHServerEmu.Core.Helpers;
 using MHServerEmu.Core.Logging;
 using MHServerEmu.Core.Memory;
 using MHServerEmu.Core.Serialization;
@@ -107,9 +108,6 @@ namespace MHServerEmu.Games.Entities
             }
 
             _conditionCollection = new(this);
-
-            // V10_REMOVEME: replace with OnPropertyChange
-            Properties[PropertyEnum.HealthMaxOther] = Properties[PropertyEnum.HealthMax];
 
             return true;
         }
@@ -399,6 +397,31 @@ namespace MHServerEmu.Games.Entities
             PowerCollection?.OnOwnerExitedWorld();
 
             UpdateInterestPolicies(false);
+        }
+
+        public override void OnPropertyChange(PropertyId id, PropertyValue newValue, PropertyValue oldValue, SetPropertyFlags flags)
+        {
+            base.OnPropertyChange(id, newValue, oldValue, flags);
+            if (flags.HasFlag(SetPropertyFlags.Refresh)) return;
+
+            switch (id.Enum)
+            {
+                case PropertyEnum.HealthMax:
+                    Properties[PropertyEnum.HealthMaxOther] = newValue;
+
+                    // Scale current health
+                    long health = Properties[PropertyEnum.Health];
+                    if (health > 0 && flags.HasFlag(SetPropertyFlags.Deserialized) == false)
+                    {
+                        long oldHealthMax = oldValue;
+                        float ratio = Math.Min(MathHelper.Ratio(health, oldHealthMax), 1f);
+                        long newHealth = Math.Max(MathHelper.RoundToInt64((long)newValue * ratio), 1);  // Do not allow health to go to 0 here
+
+                        Properties[PropertyEnum.Health] = newHealth;
+                    }
+
+                    break;
+            }
         }
 
         public virtual void OnLocomotionStateChanged(ref LocomotionState oldLocomotionState, ref LocomotionState newLocomotionState)

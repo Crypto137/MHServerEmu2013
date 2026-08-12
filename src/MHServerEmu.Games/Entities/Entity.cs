@@ -88,7 +88,7 @@ namespace MHServerEmu.Games.Entities
 
     #endregion
 
-    public class Entity : IArchiveMessageDispatcher, ISerialize
+    public class Entity : IArchiveMessageDispatcher, ISerialize, IPropertyChangeWatcher
     {
         public const ulong InvalidId = 0;
 
@@ -180,6 +180,11 @@ namespace MHServerEmu.Games.Entities
             if (!Verify.IsNotNull(Prototype)) return false;
 
             BindReplicatedFields();
+
+            // Initialize property collection and copy baseline properties from prototype / settings
+
+            // We use IPropertyChangeWatcher implementation as a replacement for multiple inheritance
+            Attach(Properties);
 
             if (Prototype.Properties != null)
                 Properties.FlattenCopyFrom(Prototype.Properties, true);
@@ -412,7 +417,29 @@ namespace MHServerEmu.Games.Entities
 
         #endregion
 
-        #region Inventory Management
+        #region IPropertyChangeWatcher
+
+        public void Attach(PropertyCollection propertyCollection)
+        {
+            // Entities can attach only to their own property collection,
+            // this is a workaround we're using to replace multiple inheritance from the client.
+            if (!Verify.IsTrue(propertyCollection == Properties)) return;
+            Properties.AttachWatcher(this);
+        }
+
+        public void Detach(bool removeFromAttachedCollection)
+        {
+            if (removeFromAttachedCollection)
+                Properties.DetachWatcher(this);
+        }
+
+        public virtual void OnPropertyChange(PropertyId id, PropertyValue newValue, PropertyValue oldValue, SetPropertyFlags flags)
+        {
+        }
+
+        #endregion
+
+            #region Inventory Management
 
         public ref RegionLocation GetOwnerLocation(out bool found)
         {
