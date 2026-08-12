@@ -282,7 +282,7 @@ namespace MHServerEmu.Games.Entities.Avatars
 
             using var propsToAdjustHandle = DictionaryPool<PropertyId, PropertyValue>.Get(out Dictionary<PropertyId, PropertyValue> propsToAdjust);
 
-            long pointsSpent = 0;
+            int pointsSpent = 0;
 
             for (int i = 0; i < commitMessage.AllocationsCount; i++)
             {
@@ -313,8 +313,9 @@ namespace MHServerEmu.Games.Entities.Avatars
             foreach (var kvp in propsToAdjust)
                 Properties.AdjustProperty((int)kvp.Value, kvp.Key);
 
+            Properties.AdjustProperty(-pointsSpent, PropertyEnum.AvatarPowerPoints);
+
             UpdatePowerProgressionPowers(false);
-            UpdatePowerPointsUnspent();
 
         End:
             PowerPointAllocationClearTemporary();
@@ -339,25 +340,6 @@ namespace MHServerEmu.Games.Entities.Avatars
             return true;
         }
 
-        private void UpdatePowerPointsUnspent()
-        {
-            // V10_NOTE: This whole thing needs to be investigated further for 1.10.
-            // AvatarPowerPoints appears to be persistent, starting rank seems to come from StartingEquippedAbilities,
-            // and AvatarPowerPoints seems to be required for powers to be unlocked for power point allocation.
-            AdvancementGlobalsPrototype advancementGlobals = GameDatabase.AdvancementGlobalsPrototype;
-            if (!Verify.IsNotNull(advancementGlobals)) return;
-
-            int numPowerPoints = advancementGlobals.GetPowerPointsGrantedAtLevel(CharacterLevel);
-
-            numPowerPoints += Properties[PropertyEnum.AvatarPowerPointsBonus];
-
-            foreach (var kvp in Properties.IteratePropertyRange(PropertyEnum.AvatarPower))
-                numPowerPoints -= kvp.Value;
-
-            numPowerPoints = Math.Max(numPowerPoints, 0);
-            Properties[PropertyEnum.AvatarPowerPoints] = numPowerPoints;
-        }
-
         #endregion
 
         #region Power Progression
@@ -373,19 +355,28 @@ namespace MHServerEmu.Games.Entities.Avatars
                 foreach (PowerProgressionEntryPrototype powerProgEntry in powerProgTable.PowerProgressionEntries)
                 {
                     PrototypeId powerProtoRef = powerProgEntry.PowerAssignment.Ability;
-                    int level = CharacterLevel;
-                    
-                    if (level < powerProgEntry.Level)
+                    if (!Verify.IsTrue(powerProtoRef != PrototypeId.Invalid))
+                        continue;
+
+                    PropertyId propId = new(PropertyEnum.AvatarPower, powerProtoRef);
+
+                    if (CharacterLevel < powerProgEntry.Level)
                     {
-                        Properties.RemoveProperty(new(PropertyEnum.AvatarPower, powerProtoRef));
+                        Properties.RemoveProperty(propId);
                         continue;
                     }
 
-                    if (Properties.HasProperty(new PropertyId(PropertyEnum.AvatarPower, powerProtoRef)) == false)
-                        Properties[PropertyEnum.AvatarPower, powerProtoRef] = powerProgEntry.PowerAssignment.Rank;
+                    if (Properties.HasProperty(propId) == false)
+                    {
+                        // Only ultimate powers use base rank from PowerProgressionTable according to AvatarPrototype::validatePowerProgressionTables()
+                        int startingRank = Power.IsUltimatePower(powerProtoRef)
+                            ? powerProgEntry.PowerAssignment.Rank
+                            : avatarProto.GetStartingRankForPower(powerProtoRef);
+                        Properties[propId] = startingRank;
+                    }
 
-                    int rankBase = Properties[PropertyEnum.AvatarPower, powerProtoRef];
-                    Properties[PropertyEnum.PowerRankCurrentBest, powerProtoRef] = rankBase;
+                    int powerRankBase = Properties[PropertyEnum.AvatarPower, powerProtoRef];
+                    Properties[PropertyEnum.PowerRankCurrentBest, powerProtoRef] = powerRankBase;
                 }
             }
 
@@ -602,7 +593,16 @@ namespace MHServerEmu.Games.Entities.Avatars
             if (IsInWorld)
                 UpdatePowerProgressionPowers(false);
 
-            UpdatePowerPointsUnspent();
+            if (newLevel > oldLevel)
+            {
+                AdvancementGlobalsPrototype advancementGlobalsProto = GameDatabase.AdvancementGlobalsPrototype;
+                if (Verify.IsNotNull(advancementGlobalsProto))
+                {
+                    int powerPointsGained = advancementGlobalsProto.GetPowerPointsGrantedAtLevel(newLevel, oldLevel + 1);
+                    if (powerPointsGained > 0)
+                        Properties.AdjustProperty(powerPointsGained, PropertyEnum.AvatarPowerPoints);
+                }
+            }
 
             // Restore health if needed
             if (restoreHealthAndEndurance && IsDead == false)

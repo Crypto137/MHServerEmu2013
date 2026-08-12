@@ -64,6 +64,29 @@ namespace MHServerEmu.Games.GameData.Prototypes
 
             return null;
         }
+
+        public int GetStartingRankForPower(PrototypeId powerProtoRef)
+        {
+            if (StartingEquippedAbilities.HasValue())
+            {
+                foreach (AbilityAssignmentPrototype abilityAssignmentProto in StartingEquippedAbilities)
+                {
+                    if (abilityAssignmentProto.Ability == powerProtoRef)
+                        return abilityAssignmentProto.Rank;
+                }
+            }
+
+            if (StartingLibraryPowers.HasValue())
+            {
+                foreach (AbilityAssignmentPrototype abilityAssignmentProto in StartingLibraryPowers)
+                {
+                    if (abilityAssignmentProto.Ability == powerProtoRef)
+                        return abilityAssignmentProto.Rank;
+                }
+            }
+
+            return 0;
+        }
     }
 
     public class ItemAssignmentPrototype : Prototype
