@@ -86,7 +86,7 @@ namespace MHServerEmu.Games.Network
                 settings.DbGuid = PlayerDbId;
                 settings.OptionFlags = EntitySettingsOptionFlags.PopulateInventories;
                 settings.PlayerConnection = this;
-                settings.PlayerName = $"0x{settings.DbGuid:X}";
+                settings.PlayerName = $"Player{settings.DbGuid & int.MaxValue}";
                 Player = Game.EntityManager.CreateEntity(settings) as Player;
             }
 
